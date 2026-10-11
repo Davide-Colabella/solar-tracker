@@ -391,13 +391,13 @@
         <h3>Inclinazione (pitch, D10) <span class="tag" id="tagPitch"></span></h3>
         <div class="ctl">
           <label for="sPitch">Angolo servo</label>
-          <input id="sPitch" type="range" min="0" max="180" step="1" value="10" data-axis="pitch">
-          <output id="sPitchOut" for="sPitch">10°</output>
+          <input id="sPitch" type="range" min="0" max="135" step="1" value="0" data-axis="pitch">
+          <output id="sPitchOut" for="sPitch">0°</output>
         </div>
         <div class="btns" data-axis="pitch">
           <button type="button" class="b" data-deg="0">0°</button><button type="button" class="b" data-deg="45">45°</button>
           <button type="button" class="b" data-deg="90">90°</button><button type="button" class="b" data-deg="135">135°</button>
-          <button type="button" class="b" data-deg="180">180°</button><button type="button" class="b" data-sweep="1">Avanti e indietro</button>
+          <button type="button" class="b" data-sweep="1">Avanti e indietro</button>
         </div>
         <div class="note" id="notePitch"></div>
         <h3 style="margin-top:18px">Direzione (azimut, D9) <span class="tag" id="tagAz"></span></h3>
@@ -826,7 +826,7 @@ let servoTimer = null;
 }));
 document.querySelectorAll(".btns[data-axis] button").forEach(b => b.addEventListener("click", () => {
   const axis = b.parentElement.dataset.axis;
-  if (b.dataset.sweep) { [20, 90, 160, 90].forEach((deg, i) => setTimeout(() => sendServo(axis, deg), i * 4000)); return; }
+  if (b.dataset.sweep) { (axis === "pitch" ? [10, 70, 125, 70] : [20, 90, 160, 90]).forEach((deg, i) => setTimeout(() => sendServo(axis, deg), i * 4000)); return; }
   sendServo(axis, b.dataset.deg);
 }));
 document.querySelectorAll("#ledBtns button").forEach(b => b.addEventListener("click", () => {

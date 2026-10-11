@@ -114,8 +114,10 @@ timer: su altri pin servirebbe `SERVO_USE_HW_PWM 0` e i servo andrebbero a scatt
   pitch resta fermo: la sua corsa è limitata dal pannello.
 - Il pitch è montato al contrario: `PITCH_SERVO_REVERSED 1` nello sketch inverte l'impulso
   (180° − angolo). Il resto del programma usa gli stessi gradi.
-- Il servo non sa se sbatte (non ha un ritorno di posizione). L'unica protezione è la corsa
-  nello sketch, `PITCH_MIN_DEG` / `PITCH_MAX_DEG`: **da impostare con la corsa misurata a mano**.
+- Il servo non sa se sbatte (non ha un ritorno di posizione). La protezione è la corsa
+  tarata a mano nello sketch: pitch da **0°** (pannello parallelo alla base) a **135°**
+  (`PITCH_MIN_DEG` / `PITCH_MAX_DEG`). La scheda rifiuta qualunque angolo fuori corsa, sia da
+  Linux sia dalla pagina. Se si rimonta la squadretta del servo, va rifatta la taratura.
 
 Elettrovalvole: quattro linee, su A0, A1, A2 e A3. I pin danno 3,3 V e pochi mA,
 quindi comandano solo l'integrato pilota sulla millefori (oggi accende 4 LED,
@@ -168,8 +170,8 @@ Con l'app in esecuzione: `http://<nome-della-scheda>.local:7000`. Ha due pagine.
 **Prova componenti** (per il banco, non per la demo)
 - "Avvia la prova" ferma l'automatismo (anche la sicurezza vento) e tiene sveglia
   la scheda; si chiude con il pulsante o da sola dopo 10 minuti (`DEBUG_TIMEOUT_S`).
-- **Servo**: angolo diretto del servo, senza passare dai calcoli del sole. Vale la corsa
-  impostata nello sketch: finché il pitch non ha i suoi limiti, muoverlo a piccoli passi.
+- **Servo**: angolo diretto del servo, senza passare dai calcoli del sole. Azimut 0–180°,
+  pitch 0–135° (la corsa tarata).
 - **Elettrovalvole**: una linea alla volta, tutte insieme o una dopo l'altra, 3 secondi l'una.
 - **LED**: accende un LED alla volta (stato, pianta, meteo), tutti, o in sequenza.
 - **Sensori**: valori in diretta dei due AHT20, del fotoresistore e
@@ -275,13 +277,60 @@ scrive nella console Python con il prefisso `[MCU]` (stato dei componenti ogni 3
 Se la telemetria non arriva, la console Python dice a che punto dell'avvio si è
 fermato lo sketch.
 
-## Taratura (`python/config.py`)
+## Configurazione
 
-- `LATITUDE`, `LONGITUDE`: ora ci sono quelle di Roma.
-- `AZ_SERVO_AT_REF`, `AZ_SERVO_DIR`: con il servo di base a 90° il pannello deve guardare a sud.
-- `PITCH_SERVO_AT_FLAT`, `PITCH_SERVO_DIR`, `TILT_MAX_DEG`: angolo servo a pannello orizzontale e corsa.
-- Servo montato al contrario (va dalla parte sbagliata e sbatte): `PITCH_SERVO_REVERSED 1`
-  (o `AZ_SERVO_REVERSED 1`) nello sketch. Oggi il pitch è invertito.
+Tutta la taratura sta in due file: `sketch/sketch.ino` per il microcontrollore e
+`python/config.py` per il lato Linux. Alcuni valori esistono in tutti e due e vanno
+cambiati insieme (indicati con ↔).
+
+### Sketch (`sketch/sketch.ino`)
+
+| Impostazione | Valore | A cosa serve |
+|---|---|---|
+| `SHIELD_5V` | 1 | interruttore del Grove Base Shield su 5V (0 = su 3.3V, cambia la piedinatura) |
+| `HAS_SERVO_AZ`, `HAS_SERVO_PITCH` | 1, 1 | servo montati; con 0 l'asse è simulato |
+| `AZ_DETACH_IDLE`, `PITCH_DETACH_IDLE` | 1, 0 | stacca il segnale ad asse fermo; il pitch resta in tensione per reggere il pannello |
+| `SERVO_USE_HW_PWM` | 1 | impulsi dal timer TIM4 (solo D9/D10); 0 = dal loop, a scatti |
+| `SERVO_SELF_TEST` | 1 | prova 20° → 70° → 20° all'avvio, solo sull'azimut |
+| `AZ_MIN_DEG`/`AZ_MAX_DEG` | 0 / 180 | corsa del servo di base |
+| `PITCH_MIN_DEG`/`PITCH_MAX_DEG` | 0 / 135 | corsa tarata del pitch (↔ `TILT_MAX_DEG`) |
+| `AZ_SERVO_REVERSED`, `PITCH_SERVO_REVERSED` | 0, 1 | servo montato al contrario: impulso a 180° − angolo |
+| `SERVO_US_MIN`/`SERVO_US_MAX` | 500 / 2400 µs | larghezza dell'impulso a 0° e 180° (SG90) |
+| `SERVO_SPEED_DEG_S` | 30 | velocità della rampa (↔ `SERVO_SPEED_DEG_S`) |
+| `PLANT_AHT_ON_SOFT_I2C` | 1 | AHT20 della pianta sulla porta D4 (0 = connettore Qwiic) |
+| `MAIN_I2C_SOFT` | 1 | porte I2C dello shield in I2C software (non serve pull-up esterno) |
+| `HAS_LIGHT_SENSOR`, `LIGHT_DIGITAL` | 1, = `SHIELD_5V` | fotoresistore montato; a 5 V si legge solo l'uscita DO |
+| `HAS_VALVE` | 0 | 0 = LED al posto delle valvole (cambia solo la scritta sulla pagina) |
+| `VALVE_ACTIVE_HIGH` | 1 | livello alto = linea aperta |
+| `VALVE_MAX_OPEN_MS`, `VALVE_MIN_PAUSE_MS` | 60 s, 5 min | protezioni delle valvole, valide anche se Linux si blocca |
+| `HAS_SOIL_SENSOR`, `HAS_TANK_SENSOR` | 0, 0 | sensore di terreno e galleggiante (oggi stimati) |
+| `PIN_LED_*` | vedi Pinout | `-1` = LED non montato |
+| `COMMS_TIMEOUT_MS` | 5 min | senza comandi da Linux il pannello va in posa di sicurezza |
+
+### Lato Linux (`python/config.py`)
+
+| Gruppo | Impostazioni | Valori attuali |
+|---|---|---|
+| Luogo | `LATITUDE`, `LONGITUDE` | Roma (41,90; 12,50) |
+| Azimut | `AZ_REF_DEG`, `AZ_SERVO_AT_REF`, `AZ_SERVO_DIR`, `AZ_SERVO_MIN/MAX` | servo a 90° = pannello verso sud; corsa 0–180 = da est a ovest |
+| Pitch | `PITCH_SERVO_AT_FLAT`, `PITCH_SERVO_DIR`, `TILT_MIN_DEG`, `TILT_MAX_DEG` | 0° = parallelo alla base, direzione +1, inclinazione 0–135° |
+| Movimento | `MOVE_DEADBAND_DEG`, `SERVO_SPEED_DEG_S` | 1,5°; 30°/s |
+| Pioggia | `RAIN_NOW_MM_H`, `RAIN_CONFIRM_RH`, `RAIN_SOON_PROB`, `RUNOFF_TILT_DEG` | 0,3 mm/h; 75 % UR; 70 %; 10° |
+| Vento | `WIND_STOW_MS`, `WIND_RELEASE_MS`, `STOW_HOLD_S`, `STOW_TILT_DEG` | raffica 10 m/s → piatto per almeno 10 minuti, si rilascia sotto 7 m/s |
+| Notte | `NIGHT_ELEVATION_DEG`, `NIGHT_TILT_DEG` | sole sotto −1° → piatto |
+| Meteo | `WEATHER_REFRESH_S`, `WEATHER_MAX_AGE_S` | ogni 30 minuti, validità 6 ore |
+| Luce alla pianta | `PLANT_LIGHT_ENABLED`, `LIGHT_STEP`, `LIGHT_HYSTERESIS_PCT` | attiva, un quarto di corsa per decisione, isteresi 15 punti |
+| Modelli AI | `HEALTH_MODEL_*`, `PLANT_MODEL_*`, `MODEL_*`, `*_KEYWORDS`, `*_MIN_CONFIDENCE` | vedi "Modelli AI" |
+| Irrigazione | `VALVE_LINES`, `VALVE_FLOW_ML_S`, `WATER_DOSE_ML`, `WATER_MAX_OPEN_S`, `WATER_MIN_INTERVAL_S`, `WATER_DAILY_CAP_FACTOR` | 4 linee, 10 ml/s (**da misurare**), 150 ml a dose, max 60 s, pausa 30 minuti |
+| Serbatoio | `TANK_CAPACITY_ML`, `COLLECTOR_AREA_M2`, `COLLECTOR_EFFICIENCY`, `RAIN_ON_PLANT_FRACTION` | 5 l; la pianta non riceve pioggia (0) |
+| Cadenze | `DECISION_PERIOD_S`, `MANUAL_TIMEOUT_S`, `DEBUG_TIMEOUT_S` | una decisione al minuto; manuale e prova durano al massimo 10 minuti |
+| Basso consumo | `LOW_POWER_MODE`, `WAKE_PERIOD_S` | attivo, risveglio ogni 30 minuti (solo fuori dalla demo) |
+| Dimostrazione | `DEMO_MODE`, `DEMO_SPEED`, `DEMO_STEP_S` | **attiva**: una giornata in circa 4 minuti |
+| Camera | `PLANT_CAMERA_SOURCE` | prima camera USB trovata |
+
+Con `TILT_MAX_DEG` oltre 90° il pannello può superare la verticale, per esempio dal comando
+manuale. Per inseguire il sole il programma non sceglie mai quelle pose, perché il pannello
+guarderebbe verso il basso.
 
 ## Modelli 3D
 
