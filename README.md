@@ -115,8 +115,9 @@ timer: su altri pin servirebbe `SERVO_USE_HW_PWM 0` e i servo andrebbero a scatt
 - Il pitch è montato al contrario: `PITCH_SERVO_REVERSED 1` nello sketch inverte l'impulso
   (180° − angolo). Il resto del programma usa gli stessi gradi.
 - Il servo non sa se sbatte (non ha un ritorno di posizione). La protezione è la corsa
-  tarata a mano nello sketch: pitch da **0°** (pannello parallelo alla base) a **135°**
-  (`PITCH_MIN_DEG` / `PITCH_MAX_DEG`). La scheda rifiuta qualunque angolo fuori corsa, sia da
+  tarata a mano nello sketch, in gradi della pagina: **135°** = pannello in piano, **65°** =
+  alzato al massimo (70° di inclinazione), **150°** = inclinato di 15° dall'altra parte
+  (`PITCH_MIN_DEG` / `PITCH_MAX_DEG` = 65 / 150). La scheda rifiuta qualunque angolo fuori corsa, sia da
   Linux sia dalla pagina. Se si rimonta la squadretta del servo, va rifatta la taratura.
 
 Elettrovalvole: quattro linee, su A0, A1, A2 e A3. I pin danno 3,3 V e pochi mA,
@@ -144,7 +145,6 @@ pannello → step-down → HW-736 → batteria LiPo 3,7 V → convertitore boost
 
 | Componente | Dove | Come si passa a quello vero |
 |---|---|---|
-| Servo mancante | `sketch.ino` | `#define HAS_SERVO_AZ 1` (o `HAS_SERVO_PITCH`) |
 | Elettrovalvole | `sketch.ino` | le uscite funzionano già (LED). Con le valvole vere `#define HAS_VALVE 1`: cambia solo la scritta sulla pagina |
 | Sensore di terreno | `sketch.ino` | `#define HAS_SOIL_SENSOR 1` e taratura `SOIL_RAW_DRY` / `SOIL_RAW_WET`. Senza, il fabbisogno è stimato |
 | Galleggiante | `sketch.ino` | `#define HAS_TANK_SENSOR 1`. Senza, il livello del serbatoio è stimato dalla pioggia |
@@ -171,7 +171,7 @@ Con l'app in esecuzione: `http://<nome-della-scheda>.local:7000`. Ha due pagine.
 - "Avvia la prova" ferma l'automatismo (anche la sicurezza vento) e tiene sveglia
   la scheda; si chiude con il pulsante o da sola dopo 10 minuti (`DEBUG_TIMEOUT_S`).
 - **Servo**: angolo diretto del servo, senza passare dai calcoli del sole. Azimut 0–180°,
-  pitch 0–135° (la corsa tarata).
+  pitch 65–150° (la corsa tarata, 135° = in piano).
 - **Elettrovalvole**: una linea alla volta, tutte insieme o una dopo l'altra, 3 secondi l'una.
 - **LED**: accende un LED alla volta (stato, pianta, meteo), tutti, o in sequenza.
 - **Sensori**: valori in diretta dei due AHT20, del fotoresistore e
@@ -293,7 +293,7 @@ cambiati insieme (indicati con ↔).
 | `SERVO_USE_HW_PWM` | 1 | impulsi dal timer TIM4 (solo D9/D10); 0 = dal loop, a scatti |
 | `SERVO_SELF_TEST` | 1 | prova 20° → 70° → 20° all'avvio, solo sull'azimut |
 | `AZ_MIN_DEG`/`AZ_MAX_DEG` | 0 / 180 | corsa del servo di base |
-| `PITCH_MIN_DEG`/`PITCH_MAX_DEG` | 0 / 135 | corsa tarata del pitch (↔ `TILT_MAX_DEG`) |
+| `PITCH_MIN_DEG`/`PITCH_MAX_DEG` | 65 / 150 | corsa tarata del pitch (↔ `TILT_MAX_DEG` / `TILT_MIN_DEG`) |
 | `AZ_SERVO_REVERSED`, `PITCH_SERVO_REVERSED` | 0, 1 | servo montato al contrario: impulso a 180° − angolo |
 | `SERVO_US_MIN`/`SERVO_US_MAX` | 500 / 2400 µs | larghezza dell'impulso a 0° e 180° (SG90) |
 | `SERVO_SPEED_DEG_S` | 30 | velocità della rampa (↔ `SERVO_SPEED_DEG_S`) |
@@ -313,7 +313,7 @@ cambiati insieme (indicati con ↔).
 |---|---|---|
 | Luogo | `LATITUDE`, `LONGITUDE` | Roma (41,90; 12,50) |
 | Azimut | `AZ_REF_DEG`, `AZ_SERVO_AT_REF`, `AZ_SERVO_DIR`, `AZ_SERVO_MIN/MAX` | servo a 90° = pannello verso sud; corsa 0–180 = da est a ovest |
-| Pitch | `PITCH_SERVO_AT_FLAT`, `PITCH_SERVO_DIR`, `TILT_MIN_DEG`, `TILT_MAX_DEG` | 0° = parallelo alla base, direzione +1, inclinazione 0–135° |
+| Pitch | `PITCH_SERVO_AT_FLAT`, `PITCH_SERVO_DIR`, `TILT_MIN_DEG`, `TILT_MAX_DEG` | servo 135° = in piano, direzione −1 (si alza scendendo verso 65°), inclinazione da −15° a 70° |
 | Movimento | `MOVE_DEADBAND_DEG`, `SERVO_SPEED_DEG_S` | 1,5°; 30°/s |
 | Pioggia | `RAIN_NOW_MM_H`, `RAIN_CONFIRM_RH`, `RAIN_SOON_PROB`, `RUNOFF_TILT_DEG` | 0,3 mm/h; 75 % UR; 70 %; 10° |
 | Vento | `WIND_STOW_MS`, `WIND_RELEASE_MS`, `STOW_HOLD_S`, `STOW_TILT_DEG` | raffica 10 m/s → piatto per almeno 10 minuti, si rilascia sotto 7 m/s |
@@ -328,9 +328,10 @@ cambiati insieme (indicati con ↔).
 | Dimostrazione | `DEMO_MODE`, `DEMO_SPEED`, `DEMO_STEP_S` | **attiva**: una giornata in circa 4 minuti |
 | Camera | `PLANT_CAMERA_SOURCE` | prima camera USB trovata |
 
-Con `TILT_MAX_DEG` oltre 90° il pannello può superare la verticale, per esempio dal comando
-manuale. Per inseguire il sole il programma non sceglie mai quelle pose, perché il pannello
-guarderebbe verso il basso.
+`TILT_MIN_DEG` negativo vuol dire che il pannello si inclina anche dall'altra parte (fino a
+15°): il programma può scegliere quelle pose se rendono di più. Con al massimo 70° di inclinazione, a mezzogiorno d'estate il
+pannello non riesce a mettersi del tutto di taglio: per la luce alla pianta si avvicina il più
+possibile.
 
 ## Modelli 3D
 
