@@ -1,0 +1,23 @@
+# KiCad local preferences and locks
+*.kicad_prl
+*.lck
+
+# Autosaves and backups
+_autosave-*
+~*.kicad_sch
+~*.kicad_pcb
+*.kicad_sch-bak
+*.kicad_pcb-bak
+*.sch-bak
+*.brd-bak
+*.bak
+*-backups/
+.history/
+
+# Generated footprint cache
+fp-info-cache
+
+# macOS metadata
+.DS_Store
+
+# Keep project files, libraries, 3D models and exports versioned.

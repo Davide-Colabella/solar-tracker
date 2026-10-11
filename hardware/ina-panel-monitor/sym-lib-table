@@ -1,0 +1,1 @@
+(sym_lib_table (version 7) (lib (name "SolarTracker") (type "KiCad") (uri "${KIPRJMOD}/SolarTracker.kicad_sym") (options "") (descr "Solar Tracker local schematic symbols")))

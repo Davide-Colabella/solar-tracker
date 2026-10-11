@@ -1,4 +1,4 @@
-# Inseguitore solare intelligente (Arduino UNO Q)
+# Solar Tracker (Arduino UNO Q)
 
 App per Arduino App Lab: pannello a 2 assi (azimut + pitch) che insegue il sole,
 si apre quando alla pianta che ha sotto arriva poca luce (fotoresistore),
@@ -27,6 +27,7 @@ python/devices.py      camera della pianta
 python/plants.py       profili delle piante (acqua, luce minima, temperatura)
 tests/test_logic.py    prove della logica su PC, senza scheda
 3d models/             supporto del pannello e scatole da stampare (STEP, STL) + render/
+hardware/              schede valvole e INA: schematici, PCB KiCad e render PNG
 ```
 
 ## Tecnologie usate
@@ -185,10 +186,18 @@ muovono a rampa, 30°/s (`SERVO_SPEED_DEG_S`).
 
 ## Modelli AI
 
+Le cartelle dei modelli sono incluse nel progetto: [PlantWatch](ai-models/plantwatch/README.md)
+per la condizione della pianta e [PlantNet-300K](ai-models/plantnet300k-mobilenetv3-small/README.md)
+per la specie. L'[overview AI](ai-models/README.md) riporta dataset, accuracy, dimensioni e
+stato dell'integrazione. Il loader usa PlantWatch per la salute e PlantNet-300K
+per la specie.
+
+
 Due modelli ONNX in `python/models/`, dichiarati in `config.py` (`HEALTH_MODEL_*`,
 `PLANT_MODEL_*`). Entrambi sono MobileNetV3-Small con ingresso 224×224; le foto
-vengono preparate nel modo standard di torchvision (`MODEL_RESIZE`, `MODEL_MEAN`,
-`MODEL_STD`).
+vengono normalizzate con i valori ImageNet (`MODEL_MEAN`, `MODEL_STD`).
+PlantWatch usa il ridimensionamento bilineare diretto a 224×224; il riconoscitore
+di specie mantiene il lato corto a 256 e il ritaglio centrale a 224.
 
 - **Tipo di pianta** (`plantnet_mobilenetv3.onnx`): 1081 specie del dataset
   Pl@ntNet-300K. I nomi scientifici sono in `plantnet_labels.txt`, uno per riga
@@ -200,13 +209,12 @@ vengono preparate nel modo standard di torchvision (`MODEL_RESIZE`, `MODEL_MEAN`
   Tradescantia). Se la specie è incerta ma il genere è sicuro, vale il genere.
   Il profilo (acqua, luce, temperatura) si sceglie dal genere: tabella `GENUS`
   in `plants.py`; un genere senza profilo usa i valori generici.
-- **Salute** (`plant_wilting.onnx`): due uscite. L'ordine delle etichette
-  (`HEALTH_MODEL_LABELS = ("sana", "appassita")`) non è scritto nel file: **va
-  confermato con chi l'ha addestrato**. Se una pianta sana risulta "appassita",
-  scambiare le due etichette.
+- **Salute — PlantWatch** (`plantwatch.onnx`): due uscite, nell'ordine
+  `healthy` (0) e `wilted` (1), confermato da `plantwatch.json`. Il modello è
+  addestrato su Houseplants e usa `HEALTH_MODEL_DIRECT_RESIZE = True`.
 - `HEALTH_OK_KEYWORDS` e `HEALTH_THIRSTY_KEYWORDS` dicono quali etichette
   significano "sana" e "ha sete" (quest'ultima fa partire un'innaffiatura).
-- Per eseguire i modelli serve `onnxruntime`, elencato in
+- Per eseguire i modelli servono `onnxruntime` e `Pillow`, elencati in
   `python/requirements.txt` (App Lab lo installa al primo avvio, serve la rete).
   Se manca si prova con OpenCV; se non c'è nemmeno quello i modelli restano
   simulati, e la pagina lo scrive.
@@ -353,10 +361,20 @@ Nella cartella `3d models/`, con i render in `3d models/render/`. Misure in mill
 | ![Scatola LED, corpo](3d%20models/render/scatola2_led_corpo.png) | ![Scatola LED, coperchio](3d%20models/render/scatola2_led_coperchio.png) | |
 | `scatola2_led_corpo.stl` · 50 × 40 × 28<br>scatola della scheda dei LED e delle valvole, fatta dalla collega | `scatola2_led_coperchio.stl` · 47 × 37 × 6 | |
 
+**Schede elettroniche** (progetti KiCad in `hardware/`)
+
+| Controllo elettrovalvole | Monitor tensione e corrente |
+|---|---|
+| ![PCB controllo elettrovalvole](hardware/valve-controller/valve-controller-render.png) | ![PCB monitor INA219](hardware/ina-panel-monitor/ina-panel-monitor-3d.png) |
+| [Progetto KiCad](hardware/valve-controller/valve-controller.kicad_pro) · 80 × 55 mm<br>L293D, quattro canali per elettrovalvole a 5 V, numerati da 1 a 4. [Collegamenti](schema.md). | [Progetto KiCad](hardware/ina-panel-monitor/ina-panel-monitor.kicad_pro) · 60 × 45 mm<br>INA219 dopo il DC/DC: ramo a 5 V, limite di progetto 2 A, I²C a 3,3 V. [Documentazione](hardware/ina-panel-monitor/README.md). |
+
 ## Prove
 
 ```
 python tests/test_logic.py
+python tests/test_models.py
 ```
 
-Girano su PC con microcontrollore e meteo simulati.
+Girano su PC con Python 3.10 o successivo, microcontrollore e meteo simulati.
+`test_models.py` richiede le dipendenze di `python/requirements.txt` e controlla
+preprocessing, etichette, foto con EXIF e inferenza PlantWatch reale.
