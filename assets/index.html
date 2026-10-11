@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inseguitore solare</title>
+<script>
+  // Tema: scuro di base; la scelta fatta col pulsante resta salvata su questo dispositivo.
+  (function () { var t = null; try { t = localStorage.getItem("tema"); } catch (e) {}
+    document.documentElement.dataset.theme = t === "light" ? "light" : "dark"; })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #eef1f4; --surface: #ffffff; --ink: #14263b; --muted: #5c6b7c; --line: #d5dce4;
+    --cell: #12233a; --cell-2: #1c3554; --cell-ink: #e8eef5; --cell-muted: #9db0c6;
+    --sun: #f2b705; --sun-soft: #fdf3cf; --sun-ink: #6b5000;
+    --leaf: #2b7a4b; --leaf-soft: #e2f1e7; --leaf-line: #a9c9b5;
+    --water: #1d6fa5; --water-soft: #dfedf6; --water-line: #b3d2e6;
+    --alert: #b93a26; --alert-soft: #f8e3de; --alert-line: #e9bdb4;
+    --water-btn: #1d6fa5; --alert-btn: #b93a26;
+    --track: #e3e8ee; --soft: #f3f6f8; --soft-2: #e6ebf0; --hair: #edf0f3;
+    --tab: #dfe5eb; --tab-on: #ffffff; --btn: #14263b; --btn-ink: #ffffff; --accent: #14263b; --bench-on: #fff8f6;
+    --head: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+    --body: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --paper: #0b141f; --surface: #131f2e; --ink: #e6edf5; --muted: #9aabbf; --line: #2c4058;
+    --cell: #172a43; --cell-2: #24405f; --cell-muted: #a9bbcf;
+    --sun-soft: #3a2f08; --sun-ink: #f6d463;
+    --leaf: #4fbf78; --leaf-soft: #15301f; --leaf-line: #2f6a47;
+    --water: #4aa3dc; --water-soft: #12293b; --water-line: #245a80;
+    --alert: #ff8a73; --alert-soft: #3a1a14; --alert-line: #7a3327;
+    --track: #223244; --soft: #1c2b3d; --soft-2: #24364b; --hair: #1f2f42;
+    --tab: #1a2838; --tab-on: #2c4058; --btn: #e6edf5; --btn-ink: #0b141f; --accent: #9ec5ee; --bench-on: #2a1512;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.45 var(--body); }
+  h1, h2, h3 { font-family: var(--head); font-weight: 600; margin: 0; letter-spacing: 0.01em; }
+  h1 { font-size: 28px; line-height: 1.1; }
+  h2 { font-size: 21px; margin-bottom: 14px; }
+  h3 { font-size: 17px; margin-bottom: 10px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; }
+  @media (max-width: 640px) { .wrap { padding: 0 14px 32px; } }
+
+  /* testata */
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 20px 0 14px; }
+  header .who { flex: 1 1 260px; min-width: 0; }
+  #clock { color: var(--muted); font-size: 14px; margin-top: 3px; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; margin: 2px 6px 2px 0; }
+  .chip.demo { background: var(--sun-soft); color: var(--sun-ink); }
+  .chip.sleep { background: var(--track); color: var(--muted); }
+  .chip.off { background: var(--alert-soft); color: var(--alert); }
+  .chip.test { background: var(--alert-btn); color: #fff; }
+  .tabs { display: inline-flex; background: var(--tab); border-radius: 10px; padding: 3px; }
+  .tabs button { border: 0; background: transparent; padding: 8px 16px; border-radius: 8px; font: 600 15px var(--body);
+                 color: var(--muted); cursor: pointer; }
+  .tabs button[aria-selected=true] { background: var(--tab-on); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 38, 59, .18); }
+
+  /* blocco del pannello: la "cella" scura */
+  .cell { background: var(--cell); color: var(--cell-ink); border-radius: 16px; padding: 22px 24px;
+          display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 8px 28px; align-items: center; }
+  @media (max-width: 820px) { .cell { grid-template-columns: minmax(0, 1fr); padding: 18px; } }
+  .cell svg { width: 100%; height: auto; display: block; }
+  .cell svg text { font-family: var(--body); }
+  .views { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 4px 12px; min-width: 0; }
+  .views .side { flex: 3 1 250px; min-width: 0; }
+  .views .top { flex: 2 1 150px; max-width: 240px; min-width: 0; }
+  #themeBtn { min-height: 40px; }
+  #mode { font: 600 40px/1 var(--head); letter-spacing: 0.01em; }
+  @media (max-width: 480px) { #mode { font-size: 32px; } }
+  #mode.sun { color: var(--sun); } #mode.leaf { color: #7fd6a0; } #mode.alert { color: #ff9c8a; } #mode.night { color: var(--cell-muted); }
+  #reason { color: var(--cell-muted); margin: 8px 0 18px; min-height: 1.45em; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+  .fact small { display: block; color: var(--cell-muted); font-size: 13px; }
+  .fact b { font: 600 22px/1.2 var(--head); font-variant-numeric: tabular-nums; }
+  .leds { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--cell-2); }
+  .led { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--cell-muted); }
+  .led i { width: 11px; height: 11px; border-radius: 50%; background: #34506f; }
+  .led.on { color: var(--cell-ink); }
+  .led.on.green i { background: #4ed06a; box-shadow: 0 0 9px #4ed06a; }
+  .led.on.red i { background: #ff5a3c; box-shadow: 0 0 9px #ff5a3c; }
+  .led.blink i { animation: blink .5s steps(2, start) infinite; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* sezioni chiare: la riga colorata in alto dice di che cosa si occupano */
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; align-items: start; }
+  @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
+  .block { background: var(--surface); border-radius: 14px; padding: 18px 20px 20px; border-top: 4px solid var(--accent); min-width: 0; }
+  .block.leaf { border-top-color: var(--leaf); } .block.sun { border-top-color: var(--sun); }
+  .block.water { border-top-color: var(--water); } .block.plain { border-top-color: var(--line); }
+  .block.wide { grid-column: 1 / -1; }
+  .note { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .note.err { color: var(--alert); }
+
+  /* foto */
+  #drop { display: block; border: 2px dashed var(--leaf-line); border-radius: 12px; padding: 20px 16px; text-align: center;
+          background: var(--leaf-soft); cursor: pointer; }
+  #drop.over { background: var(--leaf-line); }
+  #drop strong { display: block; font-size: 18px; }
+  #drop span { color: var(--muted); font-size: 14px; }
+  #file { display: none; }
+  #preview { display: none; width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin-top: 12px; }
+  .results { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  @media (max-width: 480px) { .results { grid-template-columns: 1fr; } }
+  .tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+  .tile small { display: block; color: var(--muted); font-size: 13px; }
+  .tile b { display: block; font: 600 22px/1.2 var(--head); margin: 3px 0 8px; overflow-wrap: anywhere; }
+  .tile.good { background: var(--leaf-soft); border-color: var(--leaf-line); }
+  .tile.thirsty { background: var(--water-soft); border-color: var(--water-line); }
+  .tile.bad { background: var(--alert-soft); border-color: var(--alert-line); }
+  .sim { background: var(--track); color: var(--muted); border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; }
+  .bar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; position: relative; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--leaf); transition: width .4s; }
+  .bar.water i { background: var(--water); }
+  .bar.light { height: 16px; border-radius: 8px; }
+  .bar.light i { background: var(--sun); } .bar.light i.low { background: var(--alert); }
+  .bar.light em { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .55; }
+  .conf { font-size: 13px; color: var(--muted); margin-top: 5px; }
+  .lines { display: flex; gap: 8px; }
+  .lines span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 14px var(--head);
+                background: var(--track); color: var(--muted); border: 2px solid transparent; }
+  .lines span.on { background: var(--water-btn); color: #fff; box-shadow: 0 0 10px rgba(29, 111, 165, .6); }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pick label { cursor: pointer; }
+  .pick input { position: absolute; opacity: 0; }
+  .pick span { display: inline-block; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); font-weight: 600; font-size: 14px; }
+  .pick input:checked + span { background: var(--water-btn); border-color: var(--water-btn); color: #fff; }
+  .pick input:focus-visible + span { outline: 3px solid var(--sun); outline-offset: 2px; }
+  ul.actions { margin: 12px 0 0; padding: 0; list-style: none; }
+  ul.actions li { padding: 8px 0; border-top: 1px solid var(--hair); font-size: 15px; }
+
+  .rows { display: grid; gap: 11px; }
+  .row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 15px; }
+  .row .v { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  @media (max-width: 480px) { .row { grid-template-columns: 7em minmax(0, 1fr) auto; font-size: 14px; } }
+  .lightrow { display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: center; gap: 12px; }
+  .lightrow b { font: 600 24px var(--head); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .pair small { display: block; color: var(--muted); font-size: 13px; }
+  .pair b { font: 600 19px var(--head); font-variant-numeric: tabular-nums; }
+
+  /* comandi */
+  .ctl { display: grid; grid-template-columns: 7em minmax(0, 1fr) 7em; align-items: center; gap: 10px; margin-top: 12px; }
+  .ctl output { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  @media (max-width: 480px) { .ctl { grid-template-columns: 5.2em minmax(0, 1fr) 5.4em; font-size: 15px; } }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button.b { font: 600 15px var(--body); padding: 9px 14px; border-radius: 9px; border: 1px solid var(--line);
+             background: var(--soft); color: var(--ink); cursor: pointer; }
+  button.b:hover { background: var(--soft-2); }
+  button.b.main { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
+  button.b.main:hover { background: var(--btn); filter: brightness(.88); }
+  button.b.water { background: var(--water-btn); border-color: var(--water-btn); color: #fff; }
+  button.b.stop { background: var(--alert-btn); border-color: var(--alert-btn); color: #fff; }
+  button.b:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+  #manState.on { color: var(--alert); font-weight: 700; }
+
+  ol#events { margin: 0; padding: 0; list-style: none; font-size: 15px; columns: 2; column-gap: 28px; }
+  @media (max-width: 820px) { ol#events { columns: 1; } }
+  ol#events li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 8px; padding: 5px 0; break-inside: avoid; border-bottom: 1px solid var(--hair); }
+  ol#events time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  ol#events .x { color: var(--muted); }
+
+  /* prova dei componenti */
+  .bench { background: var(--surface); border-radius: 14px; padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+           border-left: 6px solid var(--line); }
+  .bench.on { border-left-color: var(--alert); background: var(--bench-on); }
+  .bench p { margin: 0; flex: 1 1 320px; }
+  table.sens { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.sens td { padding: 7px 0; border-bottom: 1px solid var(--hair); vertical-align: baseline; }
+  table.sens td:nth-child(2) { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; padding: 7px 12px; }
+  table.sens td:last-child { width: 7.5em; text-align: right; white-space: nowrap; }
+  .tag { display: inline-block; border-radius: 999px; padding: 1px 9px; font: 600 13px var(--body); vertical-align: middle; }
+  .tag.ok { background: var(--leaf-soft); color: var(--leaf); }
+  .tag.no { background: var(--alert-soft); color: var(--alert); }
+  .tag.stub { background: var(--track); color: var(--muted); }
+  pre#mcuLog { margin: 10px 0 0; padding: 10px 12px; background: var(--cell); color: var(--cell-ink); border-radius: 10px;
+               font: 13px/1.5 Consolas, "Cascadia Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 15em; overflow: auto; }
+  @media (prefers-reduced-motion: reduce) { .led.blink i { animation: none; } .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="who">
+    <h1>Inseguitore solare</h1>
+    <div id="clock">In attesa della scheda…</div>
+  </div>
+  <div>
+    <span id="demoChip" class="chip demo" hidden>Dimostrazione: sole e meteo simulati</span>
+    <span id="sleepChip" class="chip sleep" hidden></span>
+    <span id="testChip" class="chip test" hidden>Prova componenti in corso</span>
+    <span id="linkChip" class="chip off" hidden>Pagina scollegata dalla scheda</span>
+  </div>
+  <button type="button" class="b" id="themeBtn">Tema chiaro</button>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabMain" aria-selected="true" aria-controls="viewMain">Impianto</button>
+    <button type="button" role="tab" id="tabTest" aria-selected="false" aria-controls="viewTest">Prova componenti</button>
+  </div>
+</header>
+
+<!-- =============================================================== IMPIANTO -->
+<main id="viewMain" role="tabpanel" aria-labelledby="tabMain">
+  <section class="cell" aria-label="Pannello">
+    <div class="views">
+      <svg class="side" viewBox="0 0 340 250" role="img" aria-label="Vista di lato: palo, pannello incernierato in cima al palo, pianta sotto e sole">
+        <path d="M25 205 A150 150 0 0 1 325 205" fill="none" stroke="#3b5a7e" stroke-width="2" stroke-dasharray="3 7"/>
+        <polygon id="shade" points="130,125 240,125 240,205 130,205" fill="#060d17" fill-opacity=".5"/>
+        <line x1="12" y1="205" x2="328" y2="205" stroke="#3b5a7e" stroke-width="2"/>
+        <text x="6" y="223" font-size="12" fill="#9db0c6">davanti</text>
+        <text x="334" y="223" font-size="12" fill="#9db0c6" text-anchor="end">dietro</text>
+        <g id="sun"><circle r="22" fill="#f2b705" fill-opacity=".18"/><circle r="12" fill="#f2b705"/></g>
+        <path d="M165 193 v-24 M165 181 q-14 -2 -16 -14 q13 0 16 14 M165 175 q14 -3 15 -16 q-13 1 -15 16" fill="#4fbf78" stroke="#4fbf78" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M153 193 h24 l-3 12 h-18 z" fill="#a8683f"/>
+        <rect x="118" y="200" width="24" height="5" rx="2" fill="#6f87a3"/>
+        <line x1="130" y1="201" x2="130" y2="127" stroke="#6f87a3" stroke-width="6" stroke-linecap="round"/>
+        <path id="tiltArc" d="" fill="none" stroke="#9db0c6" stroke-width="1.5"/>
+        <g id="panel" transform="translate(130 125)">
+          <rect x="0" y="-5" width="110" height="10" rx="2" fill="#2f6fa8"/>
+          <rect x="0" y="-5" width="110" height="3.5" rx="1.5" fill="#8cc4ee"/>
+        </g>
+        <circle cx="130" cy="125" r="6" style="fill: var(--cell)" stroke="#c4d3e3" stroke-width="2.5"/>
+        <text id="plantLight" x="186" y="200" font-size="12" font-weight="600" fill="#e8eef5"></text>
+        <text x="170" y="244" font-size="12" fill="#9db0c6" text-anchor="middle">di lato</text>
+      </svg>
+      <svg class="top" viewBox="0 0 200 250" role="img" aria-label="Vista dall'alto: da che parte è girato il pannello e dov'è il sole">
+        <circle cx="100" cy="112" r="78" fill="none" stroke="#3b5a7e" stroke-width="2" stroke-dasharray="3 7"/>
+        <text x="100" y="27" font-size="12" fill="#9db0c6" text-anchor="middle">N</text>
+        <text x="189" y="116" font-size="12" fill="#9db0c6" text-anchor="middle">E</text>
+        <text x="100" y="207" font-size="12" fill="#9db0c6" text-anchor="middle">S</text>
+        <text x="11" y="116" font-size="12" fill="#9db0c6" text-anchor="middle">O</text>
+        <circle cx="100" cy="112" r="24" fill="#4fbf78" fill-opacity=".35"/>
+        <g id="face" transform="translate(100 112) rotate(90)">
+          <line x1="9" y1="0" x2="60" y2="0" stroke="#8cc4ee" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
+          <path d="M72 0 l-11 -5.5 v11 z" fill="#8cc4ee"/>
+        </g>
+        <g id="panelTop" transform="translate(100 112) rotate(270)">
+          <rect id="panelTopR" x="0" y="-22" width="60" height="44" rx="2" fill="#2f6fa8" stroke="#8cc4ee" stroke-width="1.5"/>
+        </g>
+        <circle cx="100" cy="112" r="5.5" fill="#6f87a3" stroke="#c4d3e3" stroke-width="2"/>
+        <g id="sunTop"><circle r="15" fill="#f2b705" fill-opacity=".18"/><circle r="8" fill="#f2b705"/></g>
+        <text x="100" y="244" font-size="12" fill="#9db0c6" text-anchor="middle">dall'alto</text>
+      </svg>
+    </div>
+    <div>
+      <div id="mode">In avvio…</div>
+      <div id="reason"></div>
+      <div class="facts">
+        <div class="fact"><small>Inclinazione</small><b id="tilt">—</b></div>
+        <div class="fact"><small>Rivolto a</small><b id="az">—</b></div>
+        <div class="fact"><small>Sole</small><b id="sunEl">—</b></div>
+        <div class="fact"><small id="powerLabel">Potenza</small><b id="power">—</b></div>
+      </div>
+      <div class="leds" aria-label="LED sulla scheda">
+        <span class="led green" id="ledStatus"><i></i>Stato</span>
+        <span class="led green" id="ledMove"><i></i>Movimento</span>
+        <span class="led red" id="ledPlant"><i></i>Luce pianta</span>
+        <span class="led red" id="ledWeather"><i></i>Meteo</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="block leaf">
+        <h2>La pianta</h2>
+        <label id="drop" for="file">
+          <strong>Carica una foto della pianta</strong>
+          <span>tocca qui o trascina un'immagine</span>
+        </label>
+        <input id="file" type="file" accept="image/*">
+        <img id="preview" alt="Foto caricata">
+        <div class="note" id="photoMsg">Due modelli dicono che pianta è e come sta. L'impianto regola acqua e luce di conseguenza.</div>
+        <div id="results" hidden>
+          <div class="results">
+            <div class="tile" id="plantTile">
+              <small>Che pianta è <span id="plantSim" class="sim" hidden>simulato</span></small>
+              <b id="plantLabel"></b>
+              <div class="bar"><i id="plantBar"></i></div>
+              <div class="conf" id="plantConf"></div>
+              <div class="conf" id="plantAlt"></div>
+            </div>
+            <div class="tile" id="healthTile">
+              <small>Come sta <span id="healthSim" class="sim" hidden>simulato</span></small>
+              <b id="healthLabel"></b>
+              <div class="bar"><i id="healthBar"></i></div>
+              <div class="conf" id="healthConf"></div>
+            </div>
+          </div>
+          <ul class="actions" id="actions"></ul>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Muovi il pannello a mano</h2>
+        <div><span id="manState">Ora decide l'impianto</span> <span class="conf" id="manLeft"></span></div>
+        <div class="ctl">
+          <label for="mTilt">Inclinazione</label>
+          <input id="mTilt" type="range" min="0" max="80" step="1" value="0">
+          <output id="mTiltOut" for="mTilt">0°</output>
+        </div>
+        <div class="ctl">
+          <label for="mAz">Direzione</label>
+          <input id="mAz" type="range" min="90" max="270" step="1" value="180">
+          <output id="mAzOut" for="mAz">sud</output>
+        </div>
+        <div class="btns">
+          <button type="button" class="b" data-tilt="0">Piatto</button>
+          <button type="button" class="b" data-tilt="45" data-az="180">45° a sud</button>
+          <button type="button" class="b" data-tilt="max">In piedi</button>
+          <button type="button" class="b main" id="autoBtn" disabled>Torna in automatico</button>
+        </div>
+        <div class="note" id="manNote"></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="block sun">
+        <h2>Luce alla pianta</h2>
+        <div class="lightrow">
+          <div class="bar light" role="img" aria-label="Luce letta dal fotoresistore, con il minimo della pianta"><i id="lightBar"></i><em id="lightMin"></em><em id="lightMax"></em></div>
+          <b id="light">—</b>
+        </div>
+        <div class="note" id="lightNote"></div>
+      </section>
+
+      <section class="block water">
+        <h2>Irrigazione</h2>
+        <div class="rows">
+          <div class="row"><span>Pianta</span><span id="plantName">—</span><span class="v" id="plantNeed"></span></div>
+          <div class="row"><span>Sete accumulata</span><div class="bar water"><i id="thirstBar"></i></div><span class="v" id="thirst">—</span></div>
+          <div class="row"><span>Serbatoio</span><div class="bar water"><i id="tankBar"></i></div><span class="v" id="tank">—</span></div>
+          <div class="row"><span>Erogata oggi</span><span></span><span class="v" id="today">—</span></div>
+          <div class="row"><span>Linee aperte</span><div class="lines" id="lineDots" aria-label="Le quattro linee di irrigazione"><span>1</span><span>2</span><span>3</span><span>4</span></div><span></span></div>
+        </div>
+        <div class="note" id="irrNote"></div>
+        <h3 style="margin-top:16px">Innaffia a mano</h3>
+        <div class="pick" id="linePick" role="group" aria-label="Linee da aprire">
+          <label><input type="checkbox" value="1" checked><span>Linea 1</span></label>
+          <label><input type="checkbox" value="2" checked><span>Linea 2</span></label>
+          <label><input type="checkbox" value="4" checked><span>Linea 3</span></label>
+          <label><input type="checkbox" value="8" checked><span>Linea 4</span></label>
+        </div>
+        <div class="ctl">
+          <label for="vSec">Per quanto</label>
+          <input id="vSec" type="range" min="2" max="60" step="1" value="5">
+          <output id="vSecOut" for="vSec">5 s</output>
+        </div>
+        <div class="btns">
+          <button type="button" class="b water" id="vOpen">Apri le linee scelte</button>
+          <button type="button" class="b" id="vClose" disabled>Chiudi tutto</button>
+        </div>
+        <div class="note" id="vNote"></div>
+      </section>
+
+      <section class="block plain">
+        <h2>Meteo e aria</h2>
+        <div class="pair">
+          <div><small>Aria esterna</small><b id="ambient">—</b></div>
+          <div><small>Sotto il pannello</small><b id="under">—</b></div>
+          <div><small>Pioggia</small><b id="rain">—</b></div>
+          <div><small>Raffiche di vento</small><b id="gust">—</b></div>
+        </div>
+        <div class="note" id="stubs"></div>
+      </section>
+    </div>
+
+    <section class="block plain wide">
+      <h2>Che cosa è successo</h2>
+      <ol id="events"><li><time></time><span>Ancora niente.</span></li></ol>
+    </section>
+  </div>
+</main>
+
+<!-- ====================================================== PROVA COMPONENTI -->
+<main id="viewTest" role="tabpanel" aria-labelledby="tabTest" hidden>
+  <div class="bench" id="bench">
+    <p id="benchText"></p>
+    <button type="button" class="b main" id="benchBtn">Avvia la prova</button>
+  </div>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="block">
+        <h2>Servo</h2>
+        <h3>Inclinazione (pitch, D10) <span class="tag" id="tagPitch"></span></h3>
+        <div class="ctl">
+          <label for="sPitch">Angolo servo</label>
+          <input id="sPitch" type="range" min="0" max="180" step="1" value="10" data-axis="pitch">
+          <output id="sPitchOut" for="sPitch">10°</output>
+        </div>
+        <div class="btns" data-axis="pitch">
+          <button type="button" class="b" data-deg="0">0°</button><button type="button" class="b" data-deg="45">45°</button>
+          <button type="button" class="b" data-deg="90">90°</button><button type="button" class="b" data-deg="135">135°</button>
+          <button type="button" class="b" data-deg="180">180°</button><button type="button" class="b" data-sweep="1">Avanti e indietro</button>
+        </div>
+        <div class="note" id="notePitch"></div>
+        <h3 style="margin-top:18px">Direzione (azimut, D9) <span class="tag" id="tagAz"></span></h3>
+        <div class="ctl">
+          <label for="sAz">Angolo servo</label>
+          <input id="sAz" type="range" min="0" max="180" step="1" value="90" data-axis="az">
+          <output id="sAzOut" for="sAz">90°</output>
+        </div>
+        <div class="btns" data-axis="az">
+          <button type="button" class="b" data-deg="0">0°</button><button type="button" class="b" data-deg="45">45°</button>
+          <button type="button" class="b" data-deg="90">90°</button><button type="button" class="b" data-deg="135">135°</button>
+          <button type="button" class="b" data-deg="180">180°</button><button type="button" class="b" data-sweep="1">Avanti e indietro</button>
+        </div>
+        <div class="note" id="noteAz"></div>
+      </section>
+
+      <section class="block water">
+        <h2>Elettrovalvole <span class="tag" id="tagValve"></span></h2>
+        <div class="btns" style="margin-top:0">
+          <button type="button" class="b water" data-valve="3" data-lines="1">Linea 1 (D6)</button>
+          <button type="button" class="b water" data-valve="3" data-lines="2">Linea 2 (D7)</button>
+          <button type="button" class="b water" data-valve="3" data-lines="4">Linea 3 (A2)</button>
+          <button type="button" class="b water" data-valve="3" data-lines="8">Linea 4 (A3)</button>
+          <button type="button" class="b" data-valve="3" data-lines="15">Tutte insieme</button>
+          <button type="button" class="b" data-valve="seq">Una dopo l'altra</button>
+          <button type="button" class="b" data-valve="0" data-lines="15">Chiudi tutto</button>
+        </div>
+        <div class="lines" id="tLineDots" style="margin-top:12px"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+        <div class="note" id="tValveNote"></div>
+      </section>
+
+      <section class="block">
+        <h2>LED</h2>
+        <div class="btns" style="margin-top:0" id="ledBtns">
+          <button type="button" class="b" data-led="1">Stato (D4)</button>
+          <button type="button" class="b" data-led="2">Azimut (D5)</button>
+          <button type="button" class="b" data-led="8">Pianta (A0)</button>
+          <button type="button" class="b" data-led="16">Meteo (A1)</button>
+          <button type="button" class="b" data-led="27">Tutti</button>
+          <button type="button" class="b" data-led="seq">Uno alla volta</button>
+          <button type="button" class="b" data-led="0">Fine</button>
+        </div>
+        <div class="note" id="ledNote">Il LED scelto resta acceso 15 secondi e gli altri spenti. Poi tornano a mostrare lo stato.</div>
+      </section>
+
+      <section class="block leaf">
+        <h2>Camera e modelli</h2>
+        <div class="rows">
+          <div class="row"><span>Che pianta è</span><span></span><span class="tag" id="tagModelPlant"></span></div>
+          <div class="row"><span>Come sta</span><span></span><span class="tag" id="tagModelHealth"></span></div>
+        </div>
+        <div class="btns"><button type="button" class="b" id="camBtn">Scatta una foto di prova</button></div>
+        <div class="note" id="camNote">I modelli si provano anche caricando una foto nella pagina Impianto.</div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="block plain">
+        <h2>Sensori</h2>
+        <div class="note" id="sensAge" style="margin:0 0 8px"></div>
+        <table class="sens"><tbody id="sensBody"></tbody></table>
+      </section>
+
+      <section class="block sun">
+        <h2 id="lightHead">Fotoresistore (A1)</h2>
+        <div class="lightrow">
+          <div class="bar light"><i id="rawBar"></i></div>
+          <b id="rawVal">—</b>
+        </div>
+        <div class="btns">
+          <button type="button" class="b" data-cal="dark">Adesso è buio</button>
+          <button type="button" class="b" data-cal="bright">Adesso è piena luce</button>
+          <button type="button" class="b" data-cal="reset">Azzera la taratura</button>
+        </div>
+        <div class="note" id="calNote"></div>
+      </section>
+
+      <section class="block">
+        <h2>Scheda</h2>
+        <div class="rows">
+          <div class="row"><span>Collegamento</span><span id="linkText">—</span><span class="tag" id="tagLink"></span></div>
+          <div class="row"><span>Previsioni</span><span id="wxText">—</span><span></span></div>
+        </div>
+        <div class="btns"><button type="button" class="b" id="stageBtn">Chiedi allo sketch a che punto è</button></div>
+        <div class="note" id="stageNote"></div>
+        <pre id="mcuLog" aria-label="Ultimi messaggi dello sketch">Nessun messaggio dallo sketch.</pre>
+      </section>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pct = v => Math.round(v * 100) + "%";
+const compass = a => ["nord", "nord-est", "est", "sud-est", "sud", "sud-ovest", "ovest", "nord-ovest"][Math.round(a / 45) % 8];
+const MODE_NAMES = { PRODUZIONE: ["Produzione", "sun"], LUCE_PIANTA: ["Luce alla pianta", "leaf"], SICUREZZA: ["Sicurezza vento", "alert"],
+                     NOTTE: ["Notte", "night"], MANUALE: ["Comando manuale", ""] };
+const BENCH_IDLE = "Qui provi un pezzo alla volta. Mentre la prova è attiva l'impianto non decide nulla e la scheda resta sveglia; finisce da sola dopo 10 minuti senza comandi.";
+let failures = 0, state = null;
+$("benchText").textContent = BENCH_IDLE;
+
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  if (!r.ok) throw new Error("La scheda ha risposto con un errore (" + r.status + ").");
+  const j = await r.json();
+  if (j && j.error) throw new Error(j.error);
+  return j;
+}
+function setLed(id, on, blink) { const el = $(id); el.classList.toggle("on", !!on); el.classList.toggle("blink", !!(on && blink)); }
+function tag(id, kind, text) { const el = $(id); el.className = "tag " + kind; el.textContent = text; }
+function ago(s) { return s < 90 ? s + " s fa" : s < 5400 ? Math.round(s / 60) + " min fa" : Math.round(s / 3600) + " ore fa"; }
+const clockLeft = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+
+// ------------------------------------------------------------------ tema
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("themeBtn").textContent = t === "dark" ? "Tema chiaro" : "Tema scuro";
+}
+setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+$("themeBtn").addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  setTheme(t);
+  try { localStorage.setItem("tema", t); } catch (e) {}
+});
+
+// ------------------------------------------------------------------ schede
+function showTab(test) {
+  $("viewMain").hidden = test; $("viewTest").hidden = !test;
+  $("tabMain").setAttribute("aria-selected", String(!test)); $("tabTest").setAttribute("aria-selected", String(test));
+  try { history.replaceState(null, "", test ? "#prova" : "#"); } catch (e) {}
+}
+$("tabMain").addEventListener("click", () => showTab(false));
+$("tabTest").addEventListener("click", () => showTab(true));
+if (location.hash === "#prova") showTab(true);
+
+// ------------------------------------------------------------------ impianto
+function showPhoto(p) {
+  if (!p) return;
+  if (p.error) { $("photoMsg").textContent = p.error; $("photoMsg").className = "note err"; return; }
+  $("photoMsg").className = "note"; $("photoMsg").textContent = "";
+  $("results").hidden = false;
+  $("plantLabel").textContent = p.plant.label;
+  $("plantBar").style.width = pct(p.plant.confidence);
+  $("plantConf").textContent = "affidabilità " + pct(p.plant.confidence)
+    + (p.plant.group ? ", genere " + p.plant.group + " " + pct(p.plant.group_confidence) : "") + (p.plant.accepted ? "" : " (troppo bassa)");
+  const alt = p.plant.alternatives || [];
+  $("plantAlt").textContent = alt.length ? "Altre ipotesi: " + alt.map(a => a.label + " " + pct(a.confidence)).join(", ") : "";
+  $("plantSim").hidden = !p.plant.simulated;
+  $("plantTile").className = "tile" + (p.plant.accepted ? " good" : "");
+  $("healthLabel").textContent = p.health.label;
+  $("healthBar").style.width = pct(p.health.confidence);
+  $("healthConf").textContent = "affidabilità " + pct(p.health.confidence) + (p.health.accepted ? "" : " (troppo bassa)");
+  $("healthSim").hidden = !p.health.simulated;
+  $("healthTile").className = "tile" + (!p.health.accepted ? "" : p.health.needs_water ? " thirsty" : p.health.healthy ? " good" : " bad");
+  $("actions").replaceChildren(...p.actions.map(a => { const li = document.createElement("li"); li.textContent = a; return li; }));
+}
+
+function showLight(s) {
+  const l = s.light, open = s.panel.open_pct;
+  if (!l) return;
+  $("lightMin").style.left = l.min + "%"; $("lightMax").style.left = Math.min(100, l.max) + "%";
+  if (l.pct == null) {
+    $("light").textContent = "—"; $("lightBar").style.width = "0";
+    $("lightNote").textContent = "Il fotoresistore non manda letture: il pannello pensa solo a produrre.";
+    return;
+  }
+  $("light").textContent = l.digital ? (l.pct < l.min ? "buio" : "luce") : l.pct + "%";
+  $("lightBar").style.width = l.pct + "%";
+  $("lightBar").className = l.pct < l.min ? "low" : "";
+  $("lightMin").hidden = $("lightMax").hidden = !!l.digital;
+  const busy = { SICUREZZA: "comanda la sicurezza vento", NOTTE: "è notte", MANUALE: "comandi tu" }[s.mode];
+  let t = l.digital ? (l.pct < l.min ? "Il sensore dice buio: il pannello si apre per far passare la luce alla pianta."
+                                     : open > 0 ? "Il sensore dice luce: il pannello si richiude per tornare a produrre."
+                                     : "Il sensore dice luce: il pannello pensa a produrre.")
+        : l.pct < l.min ? "Sotto il minimo per " + s.plant.name + " (" + l.min + "%): il pannello si apre per far passare la luce."
+        : l.pct > l.max ? "Luce più che sufficiente (oltre " + l.max + "%): " + (open > 0 ? "il pannello si richiude per tornare a produrre." : "il pannello pensa a produrre.")
+        : "Luce sufficiente (tra " + l.min + "% e " + l.max + "%): il pannello resta com'è.";
+  if (!l.enabled) t = "Regolazione sulla luce spenta.";
+  else if (busy) t += " Adesso però " + busy + ".";
+  else if (open > 0) t += " Apertura " + open + "%.";
+  if (l.stale) t += " Lettura dell'ultimo risveglio.";
+  if (l.digital) t += " La soglia tra luce e buio è la vite blu del modulino.";
+  else if (!l.calibrated) t += " Il sensore non è tarato: si fa nella pagina Prova componenti.";
+  $("lightNote").textContent = t;
+}
+
+let valveFlow = 0;
+const pickedLines = () => [...document.querySelectorAll("#linePick input:checked")].reduce((m, i) => m + +i.value, 0);
+function valveLabel() {
+  const sec = +$("vSec").value, n = [...document.querySelectorAll("#linePick input:checked")].length;
+  $("vSecOut").textContent = sec + " s" + (valveFlow && n ? ", " + Math.round(sec * valveFlow * n) + " ml" : "");
+  $("vOpen").disabled = !n;
+}
+function showValve(v) {
+  valveFlow = v.flow_ml_s; $("vSec").max = v.max_s; valveLabel();
+  $("vClose").disabled = !v.open;
+  const lines = v.lines || [];
+  ["lineDots", "tLineDots"].forEach(id => [...$(id).children].forEach((el, i) => el.classList.toggle("on", !!lines[i])));
+  $("vNote").textContent = "Le linee scelte si aprono insieme e si richiudono da sole."
+    + (v.simulated ? " Per ora sulle uscite ci sono i LED al posto delle valvole." : "");
+  tag("tagValve", v.simulated ? "stub" : "ok", v.simulated ? "LED al posto delle valvole" : "valvole montate");
+  const open = lines.map((on, i) => on ? i + 1 : 0).filter(Boolean);
+  $("tValveNote").textContent = (open.length ? "Aperte: " + open.join(", ") + "." : "Tutte chiuse.")
+    + " Ogni pulsante apre per 3 secondi. Uscite: D6, D7 (porta Grove D6) e A2, A3 (porta Grove A2).";
+}
+async function sendValve(seconds, lines, noteId) {
+  try { await post("/valve", { seconds, lines }); } catch (e) { $(noteId).textContent = e.message; }
+  setTimeout(poll, 700);
+}
+$("vSec").addEventListener("input", valveLabel);
+document.querySelectorAll("#linePick input").forEach(i => i.addEventListener("change", valveLabel));
+$("vOpen").addEventListener("click", () => sendValve(+$("vSec").value, pickedLines(), "vNote"));
+$("vClose").addEventListener("click", () => sendValve(0, 15, "vNote"));
+document.querySelectorAll("button[data-valve]").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.valve === "seq") { [1, 2, 4, 8].forEach((mask, i) => setTimeout(() => sendValve(3, mask, "tValveNote"), i * 3400)); return; }
+  sendValve(+b.dataset.valve, +b.dataset.lines, "tValveNote");
+}));
+
+// Il pannello prima gira attorno al palo (azimut, asse verticale) e poi si inclina (pitch).
+// Di lato: la vista gira insieme al pannello, quindi lo si vede sempre di profilo; la cerniera
+// e' in cima al palo, il bordo libero sale e la faccia guarda dalla parte del palo ("davanti").
+// Dall'alto: nord in su; la freccia dice dove guarda il pannello, il pallino giallo dov'e' il sole.
+function drawScene(tilt, az, s) {
+  const rad = Math.PI / 180, t = tilt * rad;
+  const ex = (130 + 110 * Math.cos(t)).toFixed(1), ey = (125 - 110 * Math.sin(t)).toFixed(1);
+  $("panel").setAttribute("transform", `translate(130 125) rotate(${-tilt})`);
+  $("shade").setAttribute("points", `130,125 ${ex},${ey} ${ex},205 130,205`);
+  $("tiltArc").setAttribute("d", tilt < 3 ? "" : `M168 125 A38 38 0 0 0 ${(130 + 38 * Math.cos(t)).toFixed(1)} ${(125 - 38 * Math.sin(t)).toFixed(1)}`);
+  const l = s.light, known = l && l.pct != null;
+  $("shade").setAttribute("fill-opacity", known ? (0.12 + 0.6 * (1 - l.pct / 100)).toFixed(2) : 0.5);
+  $("plantLight").textContent = !known ? "" : l.digital ? (l.pct < l.min ? "pianta al buio" : "pianta in luce") : "luce alla pianta " + l.pct + "%";
+
+  const up = s.sun.elevation > 0, e = Math.max(0, s.sun.elevation) * rad;
+  const a = Math.atan2(Math.sin(e), Math.cos(e) * Math.cos((s.sun.azimuth - az) * rad));   // sole visto nel piano del pannello
+  $("sun").setAttribute("transform", `translate(${(175 - 150 * Math.cos(a)).toFixed(1)} ${(205 - 150 * Math.sin(a)).toFixed(1)})`);
+  $("sunTop").setAttribute("transform", `translate(${(100 + 78 * Math.sin(s.sun.azimuth * rad)).toFixed(1)} ${(112 - 78 * Math.cos(s.sun.azimuth * rad)).toFixed(1)})`);
+  $("sun").style.opacity = $("sunTop").style.opacity = up ? 1 : 0.15;
+  $("panelTop").setAttribute("transform", `translate(100 112) rotate(${az + 90})`);
+  $("panelTopR").setAttribute("width", Math.max(6, 60 * Math.cos(t)).toFixed(1));
+  $("face").setAttribute("transform", `translate(100 112) rotate(${az - 90})`);
+  $("face").style.opacity = tilt < 3 ? 0.25 : 1;
+}
+
+function render(s) {
+  state = s;
+  $("linkChip").hidden = true;
+  const test = !!(s.debug && s.debug.active);
+  $("testChip").hidden = !test;
+  renderTest(s);
+  if (!s.ready) { $("mode").textContent = "In avvio…"; return; }
+  $("demoChip").hidden = !s.demo;
+  $("sleepChip").hidden = !s.low_power;
+  $("sleepChip").textContent = "Basso consumo: un risveglio ogni " + s.wake_minutes + " minuti";
+  $("clock").textContent = (s.demo ? "Ora simulata " : "Ultimo controllo alle ") + s.time;
+  const [name, cls] = MODE_NAMES[s.mode] || [s.mode, ""];
+  $("mode").textContent = test ? "Prova componenti" : name;
+  $("mode").className = test ? "alert" : cls;
+  $("reason").textContent = test ? "L'automatismo è fermo finché non chiudi la prova." : s.reason;
+
+  const live = Date.now() - touched < 3000;      // mentre muovi i cursori il disegno segue la mano
+  drawScene(live ? +$("mTilt").value : s.panel.tilt, live ? +$("mAz").value : s.panel.azimuth, s);
+  $("tilt").textContent = Math.round(s.panel.tilt) + "°";
+  $("az").textContent = s.panel.tilt < 3 ? "cielo" : compass(s.panel.azimuth);
+  $("sunEl").textContent = s.sun.elevation > 0 ? Math.round(s.sun.elevation) + "° a " + compass(s.sun.azimuth) : "tramontato";
+  $("power").textContent = s.panel.power_w.toFixed(2) + " W";
+  $("powerLabel").textContent = s.panel.power_measured ? "Potenza misurata" : "Potenza stimata";
+
+  const m = s.mcu, v = s.valve;
+  setLed("ledStatus", !!m, !m || m.failsafe);
+  setLed("ledMove", m && m.moving);
+  setLed("ledPlant", s.mode === "LUCE_PIANTA" || s.mode === "MANUALE", s.mode === "MANUALE");
+  setLed("ledWeather", s.raining || s.mode === "SICUREZZA", s.mode === "SICUREZZA");
+  showValve(v);
+
+  const fmt = x => x ? x.t.toFixed(1) + " °C, " + x.rh + "%" : "non letto";
+  $("ambient").textContent = m ? fmt(m.ambient) : "—";
+  $("under").textContent = m ? fmt(m.under) : "—";
+  $("rain").textContent = s.weather ? (s.weather.rain_mm_h > 0 ? s.weather.rain_mm_h + " mm/h" : "assente") : "—";
+  $("gust").textContent = s.weather ? s.weather.gust_ms + " m/s da " + compass(s.weather.wind_dir) : "—";
+  $("stubs").textContent = m && m.stubs.length ? "Non montati, quindi simulati: " + m.stubs.join(", ") + "." : "";
+  showLight(s);
+  showManual(s.manual, s, test);
+
+  const irr = s.irrigation;
+  const same = !s.plant.label || s.plant.label.toLowerCase() === s.plant.name;
+  $("plantName").textContent = (same ? "" : s.plant.label + ", ") + s.plant.name + " (" + s.plant.light + ")";
+  $("plantNeed").textContent = s.plant.water_ml_day + " ml/giorno";
+  $("thirst").textContent = irr.deficit_ml + " ml";
+  $("thirstBar").style.width = Math.min(100, irr.deficit_ml / 4.5) + "%";
+  $("tank").textContent = (irr.tank_ml / 1000).toFixed(1) + " l";
+  $("tankBar").style.width = Math.min(100, 100 * irr.tank_ml / irr.tank_capacity_ml) + "%";
+  $("today").textContent = irr.today_ml + " ml";
+  $("irrNote").textContent = v.open ? "Sta innaffiando" + (v.remaining_s ? ", ancora " + v.remaining_s + " s." : ".")
+    : irr.pending ? "Innaffiatura richiesta (" + irr.pending + ")" + (irr.blocked ? ": in attesa, " + irr.blocked + "." : ".")
+    : irr.blocked ? "In attesa: " + irr.blocked + "." : "";
+
+  if (s.events.length) {
+    $("events").replaceChildren(...s.events.map(e => {
+      const li = document.createElement("li"), t = document.createElement("time"), x = document.createElement("span");
+      t.textContent = e.time; x.textContent = e.text;
+      if (e.count > 1) { const n = document.createElement("span"); n.className = "x"; n.textContent = " (" + e.count + " volte)"; x.append(n); }
+      li.append(t, x); return li;
+    }));
+  }
+  if (s.photo && $("results").hidden) showPhoto(s.photo);
+}
+
+// ------------------------------------------------------------------ pannello a mano
+let touched = 0, sendTimer = null, lastSent = 0;
+function labels() { $("mTiltOut").textContent = $("mTilt").value + "°"; $("mAzOut").textContent = Math.round(+$("mAz").value) + "° " + compass(+$("mAz").value); }
+function showManual(man, s, test) {
+  if (!man) return;
+  $("mTilt").min = man.tilt_min; $("mTilt").max = man.tilt_max; $("mAz").min = man.az_min; $("mAz").max = man.az_max;
+  $("manState").textContent = man.active ? "Comandi tu" : "Ora decide l'impianto";
+  $("manState").className = man.active ? "on" : "";
+  $("manLeft").textContent = man.active ? "torna in automatico tra " + clockLeft(man.remaining_s) : "";
+  $("autoBtn").disabled = !man.active;
+  ["mTilt", "mAz"].forEach(id => $(id).disabled = test);
+  document.querySelectorAll("button[data-tilt]").forEach(b => b.disabled = test);
+  if (Date.now() - touched > 3000) {
+    $("mTilt").value = man.active ? man.tilt : Math.round(s.panel.tilt);
+    $("mAz").value = man.active ? man.azimuth : Math.round(s.panel.azimuth);
+    labels();
+  }
+  const azStub = s.mcu && s.mcu.stubs.includes("servo azimut");
+  $("manNote").textContent = test ? "Fermo durante la prova dei componenti."
+    : (s.mode === "SICUREZZA" && man.active ? "Vento forte: il pannello resta in piano finché non passa. " : "Il vento forte riporta comunque il pannello in piano. ")
+      + (azStub ? "Il servo di direzione non è montato: si accende solo il suo LED. " : "")
+      + (s.low_power ? "In basso consumo la scheda impiega qualche secondo a svegliarsi." : "");
+}
+async function sendManual() {
+  sendTimer = null; lastSent = Date.now();
+  try { await post("/manual", { azimuth: +$("mAz").value, tilt: +$("mTilt").value }); } catch (e) { $("manNote").textContent = e.message; }
+}
+function moved() { touched = Date.now(); labels(); if (state && state.ready) drawScene(+$("mTilt").value, +$("mAz").value, state); if (!sendTimer) sendTimer = setTimeout(sendManual, Math.max(0, 300 - (Date.now() - lastSent))); }
+["mTilt", "mAz"].forEach(id => $(id).addEventListener("input", moved));
+document.querySelectorAll("button[data-tilt]").forEach(b => b.addEventListener("click", () => {
+  $("mTilt").value = b.dataset.tilt === "max" ? $("mTilt").max : b.dataset.tilt;
+  if (b.dataset.az) $("mAz").value = b.dataset.az;
+  moved();
+}));
+$("autoBtn").addEventListener("click", async () => { touched = 0; try { await post("/auto"); } catch (e) {} poll(); });
+
+// ------------------------------------------------------------------ prova componenti
+let servoTouched = 0;
+const debug = (action, extra) => post("/debug", Object.assign({ action }, extra || {})).then(r => { setTimeout(poll, 500); return r; });
+const tryDebug = (noteId, action, extra) => debug(action, extra).catch(e => { $(noteId).textContent = e.message; });
+
+function sensRow(name, value, kind, text) {
+  const tr = document.createElement("tr");
+  [name, value].forEach(x => { const td = document.createElement("td"); td.textContent = x; tr.append(td); });
+  const td = document.createElement("td"), sp = document.createElement("span");
+  sp.className = "tag " + kind; sp.textContent = text; td.append(sp); tr.append(td);
+  return tr;
+}
+function renderTest(s) {
+  const d = s.debug;
+  if (!d) return;
+  $("bench").classList.toggle("on", d.active);
+  $("benchBtn").textContent = d.active ? "Chiudi la prova e torna in automatico" : "Avvia la prova";
+  $("benchBtn").className = d.active ? "b stop" : "b main";
+  $("benchText").textContent = d.active
+    ? "Prova attiva: l'impianto non decide nulla, nemmeno la sicurezza vento. Si chiude da sola tra " + clockLeft(d.remaining_s) + "."
+    : BENCH_IDLE;
+
+  const x = d.sensors, link = s.link || {};
+  const fresh = !!x && x.age_s <= 15, asleep = !!x && link.asleep;
+  $("linkText").textContent = x ? "ultimi dati " + ago(x.age_s) : "nessun dato dalla scheda";
+  tag("tagLink", fresh ? "ok" : asleep ? "stub" : "no", fresh ? "collegata" : asleep ? "dorme" : "muta");
+  $("sensAge").textContent = !x ? "La scheda non ha ancora mandato dati."
+    : fresh ? "Valori in diretta, aggiornati ogni 2 secondi."
+    : "Valori di " + ago(x.age_s) + (asleep ? ": la scheda dorme, avvia la prova per svegliarla." : ": la scheda non sta mandando dati.");
+  const body = $("sensBody");
+  if (x) {
+    const st = (o, optional) => o.ok ? ["ok", "risponde"] : optional ? ["stub", "non montato"] : ["no", "non risponde"];
+    const raw = x.light.ok ? (x.light.raw == null ? x.light.pct : x.light.raw) : null, dig = !!(s.light && s.light.digital);
+    body.replaceChildren(
+      sensRow("Aria esterna (AHT20, porta I2C)", x.ambient.ok ? x.ambient.t.toFixed(1) + " °C, " + x.ambient.rh + "%" : "—", ...st(x.ambient)),
+      sensRow("Sotto il pannello (AHT20, porta D8)", x.under.ok ? x.under.t.toFixed(1) + " °C, " + x.under.rh + "%" : "—", ...st(x.under)),
+      sensRow(dig ? "Fotoresistore (uscita DO su D2)" : "Fotoresistore (A1)", raw == null ? "—" : dig ? (raw < 50 ? "buio" : "luce") : raw + "% grezzo", ...st(x.light)),
+      sensRow("Corrente del pannello (INA219)", x.ina.ok ? x.ina.v.toFixed(2) + " V, " + x.ina.ma + " mA" : "—", ...st(x.ina, true)),
+      sensRow("Umidità del terreno (A4)", x.soil.ok ? x.soil.pct + "%" : "—", ...st(x.soil, true)),
+      sensRow("Galleggiante del serbatoio (D13)", x.tank.ok ? (x.tank.water ? "c'è acqua" : "vuoto") : "—", ...st(x.tank, true)),
+      sensRow("Servo", (x.moving ? "in movimento" : "fermi") + (x.failsafe ? ", posa di sicurezza" : ""), x.synced ? "ok" : "stub", x.synced ? "allineati" : "da allineare"));
+    tag("tagPitch", x.servo_pitch.ok ? "ok" : "stub", x.servo_pitch.ok ? "montato" : "non montato");
+    tag("tagAz", x.servo_az.ok ? "ok" : "stub", x.servo_az.ok ? "montato" : "non montato");
+    $("notePitch").textContent = "La scheda dice: " + x.servo_pitch.deg + "°." + (x.servo_pitch.ok ? "" : " Non è montato (HAS_SERVO_PITCH nello sketch).");
+    $("noteAz").textContent = "La scheda dice: " + x.servo_az.deg + "°." + (x.servo_az.ok ? "" : " Non è montato: si accende solo il LED su D5 (HAS_SERVO_AZ nello sketch).");
+    if (Date.now() - servoTouched > 4000) {
+      $("sPitch").value = d.servo.pitch != null ? d.servo.pitch : x.servo_pitch.deg;
+      $("sAz").value = d.servo.az != null ? d.servo.az : x.servo_az.deg;
+      $("sPitchOut").textContent = Math.round($("sPitch").value) + "°"; $("sAzOut").textContent = Math.round($("sAz").value) + "°";
+    }
+    $("rawVal").textContent = raw == null ? "—" : dig ? (raw < 50 ? "buio" : "luce") : raw + "%"; $("rawBar").style.width = raw == null ? "0" : raw + "%";
+  } else body.replaceChildren(sensRow("Nessun dato dalla scheda", "—", "no", "muta"));
+
+  const l = s.light || {};
+  document.querySelectorAll("button[data-cal]").forEach(b => b.hidden = !!l.digital);
+  $("lightHead").textContent = l.digital ? "Fotoresistore (porta D2, luce o buio)" : "Fotoresistore (A1)";
+  $("calNote").textContent = l.digital ? "Il modulino manda solo luce o buio dalla sua uscita DO. La soglia si regola con la vite blu: coprilo e gira finché qui compare \"buio\"."
+    : l.calibrated ? "Tarato: buio a " + l.dark + "%, piena luce a " + l.bright + "%. Nella pagina Impianto la luce va da 0 a 100 tra questi due punti."
+    : l.too_close ? "Taratura ignorata: buio (" + l.dark + "%) e piena luce (" + l.bright + "%) sono troppo vicini."
+    : l.dark != null ? "Buio a " + l.dark + "%. Ora scopri il sensore e premi \"Adesso è piena luce\"."
+    : l.bright != null ? "Piena luce a " + l.bright + "%. Ora copri il sensore e premi \"Adesso è buio\"."
+    : "Non tarato. Copri il sensore e premi \"Adesso è buio\", poi scoprilo e premi \"Adesso è piena luce\".";
+  tag("tagModelPlant", d.models.classify_plant ? "ok" : "stub", d.models.classify_plant ? "modello vero" : "simulato");
+  tag("tagModelHealth", d.models.assess_health ? "ok" : "stub", d.models.assess_health ? "modello vero" : "simulato");
+  const w = d.weather;
+  $("wxText").textContent = !w ? "non ancora scaricate" : w.simulated ? "simulate (dimostrazione)" : "Open-Meteo, scaricate " + ago(w.age_min * 60);
+  if (d.stage) $("stageNote").textContent = d.stage;
+  $("mcuLog").textContent = d.log.length ? d.log.map(e => e.time + "  " + e.text).join("\n") : "Nessun messaggio dallo sketch.";
+}
+
+$("benchBtn").addEventListener("click", () => tryDebug("benchText", state && state.debug && state.debug.active ? "stop" : "start"));
+$("stageBtn").addEventListener("click", () => { $("stageNote").textContent = "Chiedo…"; tryDebug("stageNote", "stage"); });
+function sendServo(axis, deg) {
+  servoTouched = Date.now();
+  const id = axis === "az" ? "sAz" : "sPitch";
+  $(id).value = deg; $(id + "Out").textContent = Math.round(deg) + "°";
+  tryDebug(axis === "az" ? "noteAz" : "notePitch", "servo", { axis, deg: +deg });
+}
+let servoTimer = null;
+["sPitch", "sAz"].forEach(id => $(id).addEventListener("input", e => {
+  servoTouched = Date.now(); $(id + "Out").textContent = e.target.value + "°";
+  clearTimeout(servoTimer); servoTimer = setTimeout(() => sendServo(e.target.dataset.axis, e.target.value), 250);
+}));
+document.querySelectorAll(".btns[data-axis] button").forEach(b => b.addEventListener("click", () => {
+  const axis = b.parentElement.dataset.axis;
+  if (b.dataset.sweep) { [20, 90, 160, 90].forEach((deg, i) => setTimeout(() => sendServo(axis, deg), i * 4000)); return; }
+  sendServo(axis, b.dataset.deg);
+}));
+document.querySelectorAll("#ledBtns button").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.led === "seq") { [1, 2, 8, 16, 0].forEach((mask, i) => setTimeout(() => tryDebug("ledNote", "leds", { mask }), i * 2500)); return; }
+  tryDebug("ledNote", "leds", { mask: +b.dataset.led });
+}));
+$("camBtn").addEventListener("click", async () => {
+  $("camNote").textContent = "Scatto…"; $("camNote").className = "note";
+  try { const r = await post("/debug", { action: "camera" }); $("camNote").textContent = r.text; $("camNote").className = "note" + (r.ok ? "" : " err"); }
+  catch (e) { $("camNote").textContent = e.message; $("camNote").className = "note err"; }
+});
+document.querySelectorAll("button[data-cal]").forEach(b => b.addEventListener("click", async () => {
+  try { await post("/light", { point: b.dataset.cal }); } catch (e) { $("calNote").textContent = e.message; }
+  poll();
+}));
+
+// ------------------------------------------------------------------ aggiornamento
+async function poll() {
+  try {
+    const r = await fetch("/state", { cache: "no-store" });
+    render(await r.json());
+    failures = 0;
+  } catch (e) {
+    if (++failures >= 3) $("linkChip").hidden = false;
+  }
+}
+setInterval(poll, 1000);
+poll();
+
+// ------------------------------------------------------------------ foto
+function shrink(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 640 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => reject(new Error("Questo file non è un'immagine leggibile."));
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function send(file) {
+  if (!file) return;
+  const msg = $("photoMsg");
+  msg.className = "note"; msg.textContent = "Analisi in corso…";
+  try {
+    const data = await shrink(file);
+    $("preview").src = data; $("preview").style.display = "block";
+    showPhoto(await post("/photo", { image: data }));
+    poll();
+  } catch (e) { msg.className = "note err"; msg.textContent = e.message || "Invio non riuscito."; }
+}
+$("file").addEventListener("change", e => { send(e.target.files[0]); e.target.value = ""; });
+const drop = $("drop");
+["dragenter", "dragover"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => send(e.dataTransfer.files[0]));
+</script>
+</body>
+</html>

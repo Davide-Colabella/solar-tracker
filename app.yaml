@@ -1,0 +1,5 @@
+name: Inseguitore solare intelligente
+icon: ☀️
+description: Pannello solare a 2 assi che insegue il sole, dà luce alla pianta sottostante quando serve, la riconosce da una foto e la innaffia.
+bricks:
+  - arduino:web_ui
