@@ -25,23 +25,21 @@
  *      0x38  Grove AHT20 n.1 "AMBIENTE" (aria esterna)
  *      0x40  INA219 (monitor I/V pannello)        [STUB]
  *
- *  Bus I2C software su D8 (SCL) e D9 (SDA) = porta "D8" del Base Shield
+ *  Bus I2C software su D4 (SCL) e D5 (SDA) = porta "D4" del Base Shield
  *      0x38  Grove AHT20 n.2 "PIANTA" (sotto il pannello)
  *      I due AHT20 hanno lo stesso indirizzo: devono stare su due bus diversi.
  *      A 5 V NON va sulla porta D2: porterebbe 5 V sul pin D3.
- *      D9 e' anche il pin del secondo servo: quando lo monti, questo sensore
- *      va spostato (per esempio sul Qwiic, PLANT_AHT_ON_SOFT_I2C 0).
  *
  *  D2   FOTORESISTORE, uscita digitale DO del modulino (alta = buio).
  *       Porta "D2", solo filo giallo; il filo bianco (D3) resta scollegato.
  *       L'uscita analogica AO NON va collegata: a 5 V brucerebbe A1.
  *
- *  D9   segnale servo AZIMUT (rotazione della base attorno a Z)        [STUB]
+ *  D9   segnale servo AZIMUT (rotazione della base attorno a Z)
  *  D10  segnale servo PITCH  (inclinazione del pannello)
- *       Rosso al pin 5V (prototipo con un solo servo), marrone a GND. Mai
- *       dal 3V3 ne' dalle porte Grove. Condensatore elettrolitico
- *       470-1000 uF tra 5V e GND vicino al servo. Con due servo serve
- *       un'alimentazione a 5 V separata, con GND in comune.
+ *       Rosso di entrambi a un'alimentazione a 5 V separata (almeno 2 A),
+ *       marrone a GND, con GND in comune con la scheda. Mai dal 3V3 ne' dalle
+ *       porte Grove. Condensatore elettrolitico 470-1000 uF tra 5V e GND
+ *       vicino ai servo.
  *
  *  ELETTROVALVOLE: 4 linee di irrigazione, comandate da un integrato pilota
  *  (oggi accende 4 LED, domani le valvole vere con lo stesso circuito).
@@ -54,15 +52,12 @@
  *  A4   sensore capacitivo di umidita' del terreno, solo a 3,3 V    [STUB]
  *
  *  LED (accesi a livello alto; LED nudi con resistenza 330 ohm - 1 k in serie)
- *  D4   STATO     1 lampo ogni 2 s = tutto ok; 2 lampi = manca un sensore;
+ *  D8   STATO     1 lampo ogni 2 s = tutto ok; 2 lampi = manca un sensore;
  *                 lampeggio veloce = il lato Linux non sta comandando
- *  D5   AZIMUT    acceso mentre l'asse di azimut si muove: fa le veci del
- *                 secondo servo finche' non viene montato
  *  D6   PIANTA    fisso = pannello aperto per dare luce alla pianta;
  *                 lampeggiante = comando manuale dalla pagina web
  *  D7   METEO     fisso = piove; veloce = sicurezza vento
- *       (porta "D6": giallo = PIANTA, bianco = METEO. Gli stessi due LED
- *       escono in copia anche su D11 e D12, come prima.)
+ *       (porta "D6": giallo = PIANTA, bianco = METEO)
  *
  *  Camera pianta: USB sul connettore USB-C (lato Linux), nessun pin MCU.
  * ---------------------------------------------------------------------------
@@ -76,7 +71,7 @@
 
 // Metti a 1 quando il servo e' montato. Con 0 l'asse e' simulato: l'angolo
 // viene comunque calcolato e riportato in telemetria, ma non esce nessun impulso.
-#define HAS_SERVO_AZ     0
+#define HAS_SERVO_AZ     1
 #define HAS_SERVO_PITCH  1
 
 // Stacca il segnale quando l'asse e' fermo (meno consumo, niente ronzio).
@@ -92,7 +87,7 @@
 
 // Interruttore di tensione del Grove Base Shield: 1 = su 5V, 0 = su 3.3V.
 // A 5 V le linee I2C non usano le resistenze interne dei pin (bastano quelle
-// dei moduli), l'AHT20 della pianta sta su D8/D9 e il fotoresistore si legge
+// dei moduli), l'AHT20 della pianta sta su D4/D5 e il fotoresistore si legge
 // dalla sua uscita digitale.
 #define SHIELD_5V  1
 
@@ -119,8 +114,8 @@ const int PIN_MAIN_SCL = D21;
 #define PLANT_AHT_ON_SOFT_I2C  1
 
 #if SHIELD_5V
-const int PIN_SOFT_SCL = D8;   // porta "D8": filo giallo del cavo Grove
-const int PIN_SOFT_SDA = D9;   // filo bianco
+const int PIN_SOFT_SCL = D4;   // porta "D4": filo giallo del cavo Grove
+const int PIN_SOFT_SDA = D5;   // filo bianco
 #else
 const int PIN_SOFT_SCL = D2;   // porta "D2": filo giallo del cavo Grove
 const int PIN_SOFT_SDA = D3;   // filo bianco
@@ -136,14 +131,11 @@ const int PIN_LIGHT_DO = D2;    // uscita DO (LIGHT_DIGITAL 1)
 
 // LED di stato: metti -1 al posto del pin per quelli che non monti.
 #define LED_ACTIVE_HIGH  1
-const int PIN_LED_STATUS = D4;    // battito: 1 lampo ok, 2 lampi sensore mancante, veloce Linux assente
-const int PIN_LED_AZ = D5;        // asse di azimut in movimento (reale o simulato)
+const int PIN_LED_STATUS = D8;    // porta "D8", filo giallo. Battito: 1 lampo ok, 2 lampi sensore mancante, veloce Linux assente
+const int PIN_LED_AZ = -1;        // asse di azimut in movimento (reale o simulato)
 const int PIN_LED_PITCH = -1;     // asse di pitch in movimento
 const int PIN_LED_PLANT = D6;     // fisso luce alla pianta, lampeggiante comando manuale (porta "D6", filo giallo)
 const int PIN_LED_WEATHER = D7;   // fisso pioggia, veloce sicurezza vento (porta "D6", filo bianco)
-// Gli stessi due LED escono in copia anche sui pin di prima: funzionano dovunque li colleghi.
-const int PIN_LED_PLANT_OLD = D11;
-const int PIN_LED_WEATHER_OLD = D12;
 const uint32_t LINK_TIMEOUT_MS = 150000UL;  // senza comandi da Linux per 2,5 min: LED di stato veloce
 
 // Protezioni dell'elettrovalvola, valide anche se il lato Linux sbaglia o si blocca
@@ -162,7 +154,7 @@ const int SOIL_RAW_WET = 1300;
 // 4 microsecondi gia' prima di setup() e bloccava l'avvio dello sketch.
 #define SERVO_USE_HW_PWM  1
 
-// Prova visiva all'avvio: ogni servo montato va a 20 gradi, sale a 70 e torna
+// Prova visiva all'avvio: il servo di azimut va a 20 gradi, sale a 70 e torna
 // a 20, prima che il lato Linux prenda il comando. Metti 0 per disattivarla.
 #define SERVO_SELF_TEST  1
 const float SELF_TEST_LOW_DEG = 20.0f;
@@ -175,6 +167,11 @@ const int SERVO_US_MAX = 2400;
 // Limiti meccanici in gradi servo (protezione finale, anche se Linux sbaglia)
 const float AZ_MIN_DEG = 0.0f, AZ_MAX_DEG = 180.0f;
 const float PITCH_MIN_DEG = 0.0f, PITCH_MAX_DEG = 180.0f;
+
+// 1 = il servo gira al contrario: l'impulso va a 180 - angolo. Tutto il resto
+// (Linux, pagina web, prova all'avvio) continua a ragionare con gli stessi gradi.
+#define AZ_SERVO_REVERSED     0
+#define PITCH_SERVO_REVERSED  1
 
 const float SERVO_SPEED_DEG_S = 30.0f;      // velocita' di rampa
 const uint32_t SERVO_STEP_MS = 20;          // un passo di rampa per periodo servo
@@ -233,9 +230,6 @@ enum LinuxFlags {
   LX_SAFE   = 1 << 3,   // sicurezza vento
 };
 
-#if SHIELD_5V && PLANT_AHT_ON_SOFT_I2C && HAS_SERVO_AZ
-#error "D9 serve al servo di azimut: sposta l'AHT20 della pianta (per esempio sul Qwiic, PLANT_AHT_ON_SOFT_I2C 0)"
-#endif
 
 // ============================== BUS I2C ====================================
 // Interfaccia minima comune al bus hardware (Wire, Wire1) e a quello software.
@@ -548,9 +542,9 @@ static const struct device *const servoPwmDev = DEVICE_DT_GET(DT_NODELABEL(pwm4)
 
 class Axis {
 public:
-  Axis(int pin, int pwmChannel, bool present, bool detachIdle, float minDeg, float maxDeg)
+  Axis(int pin, int pwmChannel, bool present, bool detachIdle, float minDeg, float maxDeg, bool reversed)
     : _pin(pin), _channel(pwmChannel), _present(present), _detachIdle(detachIdle),
-      _min(minDeg), _max(maxDeg) {}
+      _min(minDeg), _max(maxDeg), _reversed(reversed) {}
 
   void begin() {
 #if !SERVO_USE_HW_PWM
@@ -588,7 +582,8 @@ public:
       _cur += constrain(err, -maxStepDeg, maxStepDeg);
       _dirty = false;
       _lastMove = now;
-      setPulse((int)(SERVO_US_MIN + (_cur / 180.0f) * (SERVO_US_MAX - SERVO_US_MIN) + 0.5f));
+      float deg = _reversed ? 180.0f - _cur : _cur;
+      setPulse((int)(SERVO_US_MIN + (deg / 180.0f) * (SERVO_US_MAX - SERVO_US_MIN) + 0.5f));
     } else if (_pulseUs > 0 && (_detachIdle || releaseWhenIdle)
                && now - _lastMove >= (releaseWhenIdle ? 400u : SERVO_IDLE_DETACH_MS)) {
       setPulse(0);                          // asse fermo: niente piu' impulsi
@@ -632,6 +627,7 @@ private:
   int _pin, _channel;
   bool _present, _detachIdle;
   float _min, _max;
+  bool _reversed;
   float _cur = 0.0f, _target = 0.0f;
   bool _known = false, _dirty = false;
   int _pulseUs = 0, _pwmError = 0;
@@ -654,8 +650,8 @@ Aht20 ahtAmbient(busMain, 0);
 Aht20 ahtPlant(busPlant, 1000);  // sfasato di 1 s rispetto all'altro
 Ina219 ina(busMain);
 
-Axis axisAz(PIN_SERVO_AZ, 3, HAS_SERVO_AZ, AZ_DETACH_IDLE, AZ_MIN_DEG, AZ_MAX_DEG);
-Axis axisPitch(PIN_SERVO_PITCH, 4, HAS_SERVO_PITCH, PITCH_DETACH_IDLE, PITCH_MIN_DEG, PITCH_MAX_DEG);
+Axis axisAz(PIN_SERVO_AZ, 3, HAS_SERVO_AZ, AZ_DETACH_IDLE, AZ_MIN_DEG, AZ_MAX_DEG, AZ_SERVO_REVERSED);
+Axis axisPitch(PIN_SERVO_PITCH, 4, HAS_SERVO_PITCH, PITCH_DETACH_IDLE, PITCH_MIN_DEG, PITCH_MAX_DEG, PITCH_SERVO_REVERSED);
 
 bool failsafeSet = false, failsafeActive = false;
 float failsafeAz = 0.0f, failsafePitch = 0.0f;
@@ -893,8 +889,6 @@ bool rpcSetStatus(int flags) {
 void ledWrite(int pin, bool on) {
   if (pin < 0) return;
   digitalWrite(pin, (on == (LED_ACTIVE_HIGH != 0)) ? HIGH : LOW);
-  if (pin == PIN_LED_PLANT) ledWrite(PIN_LED_PLANT_OLD, on);
-  if (pin == PIN_LED_WEATHER) ledWrite(PIN_LED_WEATHER_OLD, on);
 }
 
 // Tiene acceso il LED di un asse per mezzo secondo dopo l'ultimo movimento,
@@ -1065,8 +1059,9 @@ void printStatus(uint32_t now) {
 
 // ============================ SETUP / LOOP =================================
 
-// Prova all'avvio: 20 -> 70 -> 20 gradi su ogni servo montato. Si interrompe
-// appena arriva il primo comando dal lato Linux.
+// Prova all'avvio: 20 -> 70 -> 20 gradi sul servo di azimut. Il pitch resta
+// fermo: la sua corsa e' limitata dal pannello e quei gradi lo farebbero sbattere.
+// Si interrompe appena arriva il primo comando dal lato Linux.
 void servoSelfTest(uint32_t now) {
 #if SERVO_SELF_TEST
   static uint8_t step = 0;
@@ -1076,8 +1071,8 @@ void servoSelfTest(uint32_t now) {
     step = 3;
     return;
   }
-  Axis *axes[] = {&axisAz, &axisPitch};
-  bool moving = axisAz.moving() || axisPitch.moving();
+  Axis *axes[] = {&axisAz};
+  bool moving = axisAz.moving();
   if (step == 0) {
     for (Axis *axis : axes) {
       if (axis->present()) {
@@ -1127,8 +1122,7 @@ void setup() {
 #if HAS_LIGHT_SENSOR && LIGHT_DIGITAL
   pinMode(PIN_LIGHT_DO, INPUT);     // senza resistenza interna: la linea puo' stare a 5 V
 #endif
-  const int ledPins[] = {PIN_LED_STATUS, PIN_LED_AZ, PIN_LED_PITCH, PIN_LED_PLANT_OLD, PIN_LED_WEATHER_OLD,
-                         PIN_LED_PLANT, PIN_LED_WEATHER};
+  const int ledPins[] = {PIN_LED_STATUS, PIN_LED_AZ, PIN_LED_PITCH, PIN_LED_PLANT, PIN_LED_WEATHER};
   for (int pin : ledPins) {
     if (pin >= 0) {
       pinMode(pin, OUTPUT);

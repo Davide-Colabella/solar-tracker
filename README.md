@@ -26,7 +26,24 @@ python/demo.py         giornata simulata per le dimostrazioni
 python/devices.py      camera della pianta
 python/plants.py       profili delle piante (acqua, luce minima, temperatura)
 tests/test_logic.py    prove della logica su PC, senza scheda
+3d models/             supporto del pannello e scatole da stampare (STEP, STL) + render/
 ```
+
+## Tecnologie usate
+
+| Parte | Tecnologia |
+|---|---|
+| Scheda | **Arduino UNO Q**: microcontrollore STM32U585 (sketch su Zephyr) + processore Qualcomm QRB2210 con Linux (lato Python), sulla stessa scheda |
+| Ambiente | **Arduino App Lab**: un'app = sketch + Python + pagina web (`app.yaml`), brick `arduino:web_ui` |
+| Microcontrollore | C++ Arduino; driver PWM di **Zephyr** sul timer TIM4 per i servo; I2C software per i sensori |
+| Collegamento MCU ↔ Linux | **Arduino_RouterBridge** (chiamate RPC e notifiche in MsgPack) |
+| Lato Linux | **Python 3**: libreria standard più `numpy` e `onnxruntime` |
+| Pagina web | HTML, CSS e JavaScript senza librerie, servita dal brick WebUI sulla porta 7000 |
+| Meteo | API **Open-Meteo** (gratuita, senza chiave), con cache su disco |
+| Posizione del sole | calcolo astronomico in `solar.py`, nessun servizio esterno |
+| Intelligenza artificiale | due modelli **MobileNetV3-Small** in formato **ONNX**, eseguiti con **ONNX Runtime** (OpenCV come ripiego) |
+| Sensori e moduli | Grove Base Shield, 2× Grove **AHT20** (temperatura e umidità), fotoresistore, servo **SG90**, camera USB |
+| Meccanica | parti progettate in CAD (STEP) e scatole in STL, stampate in 3D |
 
 ## Pinout
 
@@ -43,20 +60,18 @@ porta D2 e il fotoresistore si legge dalla sua uscita digitale.
 |---|---|---|---|
 | **I2C** (una qualsiasi) | AHT20 n.1 "aria esterna", cavo Grove intero | | SDA/SCL (D20/D21), I2C via software |
 | **D2** | fotoresistore, uscita **DO** (D2) | **non collegare** (è D3) | rosso → VCC, nero → GND del modulino. AO resta scollegato |
-| **D4** | LED stato (D4) | LED azimut (D5) | |
-| **D6** | LED luce pianta (D6) | LED meteo (D7) | gli stessi due LED escono in copia su D11 e D12 |
-| **D8** | AHT20 n.2 "sotto il pannello", cavo Grove intero | | D8 = SCL, D9 = SDA, I2C via software |
+| **D4** | AHT20 n.2 "sotto il pannello", cavo Grove intero | | D4 = SCL, D5 = SDA, I2C via software |
+| **D6** | LED luce pianta (D6) | LED meteo (D7) | |
+| **D8** | LED stato (D8) | | |
 | **A0** | valvole, linea 1 (A0) | linea 2 (A1) | verso l'integrato pilota |
 | **A2** | valvole, linea 3 (A2) | linea 4 (A3) | verso l'integrato pilota |
-| pin della scheda | servo pitch: **D10** segnale, **5V**, **GND** | | l'unico che resta sui pin |
+| pin della scheda | servo azimut: **D9** segnale · servo pitch: **D10** segnale | | rosso e marrone all'alimentazione 5 V separata |
 | **USB-C** | alimentazione, camera USB | | lato Linux |
 
-Previsti nel firmware ma non collegati: servo azimut (D9), galleggiante (D13), umidità del
+Previsti nel firmware ma non collegati: galleggiante (D13), umidità del
 terreno (A4, solo a 3,3 V), INA219 (porta I2C).
 
-- I due AHT20 hanno lo stesso indirizzo fisso (0x38): uno sulle porte I2C, l'altro sulla porta D8.
-- D9 è anche il pin del secondo servo: quando verrà montato, l'AHT20 della pianta andrà
-  spostato (per esempio sul Qwiic, che resta a 3,3 V: `PLANT_AHT_ON_SOFT_I2C 0`).
+- I due AHT20 hanno lo stesso indirizzo fisso (0x38): uno sulle porte I2C, l'altro sulla porta D4.
 - Il fotoresistore a 5 V dà solo luce o buio; la soglia è la vite blu del modulino. Per avere
   la percentuale serve l'uscita AO su A1, quindi il modulino a 3,3 V oppure un partitore
   (AO → 10 kΩ → A1 → 20 kΩ → GND) e `LIGHT_DIGITAL 0` nello sketch.
@@ -71,24 +86,36 @@ Chi non serve si disattiva mettendo `-1` al posto del pin nello sketch.
 
 | LED | Pin | Significato |
 |---|---|---|
-| Stato | D4 | 1 lampo ogni 2 s = tutto ok · 2 lampi = manca un AHT20 · lampeggio veloce = il lato Linux non sta comandando |
-| Azimut | D5 | acceso mentre l'asse di azimut si muove: fa le veci del secondo servo finché non viene montato |
+| Stato | D8 | 1 lampo ogni 2 s = tutto ok · 2 lampi = manca un AHT20 · lampeggio veloce = il lato Linux non sta comandando |
 | Linee 1–4 | A0, A1, A2, A3 | nella scatola delle valvole: acceso = linea aperta. Sono le uscite vere delle elettrovalvole |
-| Luce pianta | D6 (e D11) | fisso = pannello aperto per dare luce alla pianta · lampeggiante = comando manuale dalla pagina web |
-| Meteo | D7 (e D12) | fisso = piove · lampeggio veloce = sicurezza vento |
+| Luce pianta | D6 | fisso = pannello aperto per dare luce alla pianta · lampeggiante = comando manuale dalla pagina web |
+| Meteo | D7 | fisso = piove · lampeggio veloce = sicurezza vento |
 
-C'è anche un LED per il pitch (`PIN_LED_PITCH`), spento di default.
+Ci sono anche un LED per ciascun asse (`PIN_LED_AZ`, `PIN_LED_PITCH`), spenti di default:
+con i servo montati il movimento si vede direttamente.
 
 ### Servo ed elettrovalvole
 
-Il servo è pilotato dal timer hardware della scheda (PWM su D9/D10), senza la
-libreria Servo, che su questa scheda blocca lo sketch.
+I servo sono pilotati dal timer hardware della scheda (PWM su D9/D10), senza la
+libreria Servo, che su questa scheda blocca lo sketch. Solo D9 e D10 hanno quel
+timer: su altri pin servirebbe `SERVO_USE_HW_PWM 0` e i servo andrebbero a scatti.
 
-Servo SG90: arancione al pin di segnale, marrone a GND, rosso al pin **5V**
-dell'header (va bene per il prototipo con un solo servo; mai dal 3V3 né dalle
-porte Grove). Un elettrolitico da 470–1000 µF tra 5V e GND vicino al servo evita
-i reset quando parte. Con due servo serve un'alimentazione a 5 V separata, con
-GND in comune.
+| Filo SG90 | Servo azimut (base) | Servo pitch (inclinazione) |
+|---|---|---|
+| arancione (segnale) | **D9** | **D10** |
+| rosso (+5 V) | +5 V dell'alimentazione separata | +5 V dell'alimentazione separata |
+| marrone (GND) | GND dell'alimentazione separata | GND dell'alimentazione separata |
+
+- L'alimentazione separata deve dare 5 V e almeno 2 A. Il suo GND va collegato anche
+  a un GND della scheda, altrimenti il segnale non ha riferimento.
+- Mai dal 3V3 né dai fili rossi delle porte Grove.
+- Un elettrolitico da 470–1000 µF tra 5 V e GND vicino ai servo evita i reset quando partono.
+- All'avvio solo il servo di azimut fa la prova 20° → 70° → 20° (`SERVO_SELF_TEST`). Il
+  pitch resta fermo: la sua corsa è limitata dal pannello.
+- Il pitch è montato al contrario: `PITCH_SERVO_REVERSED 1` nello sketch inverte l'impulso
+  (180° − angolo). Il resto del programma usa gli stessi gradi.
+- Il servo non sa se sbatte (non ha un ritorno di posizione). L'unica protezione è la corsa
+  nello sketch, `PITCH_MIN_DEG` / `PITCH_MAX_DEG`: **da impostare con la corsa misurata a mano**.
 
 Elettrovalvole: quattro linee, su A0, A1, A2 e A3. I pin danno 3,3 V e pochi mA,
 quindi comandano solo l'integrato pilota sulla millefori (oggi accende 4 LED,
@@ -141,14 +168,18 @@ Con l'app in esecuzione: `http://<nome-della-scheda>.local:7000`. Ha due pagine.
 **Prova componenti** (per il banco, non per la demo)
 - "Avvia la prova" ferma l'automatismo (anche la sicurezza vento) e tiene sveglia
   la scheda; si chiude con il pulsante o da sola dopo 10 minuti (`DEBUG_TIMEOUT_S`).
-- **Servo**: angolo diretto del servo da 0 a 180°, senza passare dai calcoli del sole.
+- **Servo**: angolo diretto del servo, senza passare dai calcoli del sole. Vale la corsa
+  impostata nello sketch: finché il pitch non ha i suoi limiti, muoverlo a piccoli passi.
 - **Elettrovalvole**: una linea alla volta, tutte insieme o una dopo l'altra, 3 secondi l'una.
-- **LED**: accende un LED alla volta, tutti, o in sequenza (richiede lo sketch aggiornato).
+- **LED**: accende un LED alla volta (stato, pianta, meteo), tutti, o in sequenza.
 - **Sensori**: valori in diretta dei due AHT20, del fotoresistore e
   dei componenti facoltativi, ognuno con "risponde", "non risponde" o "non montato".
 - **Fotoresistore**: lettura grezza e taratura (buio, piena luce).
 - **Camera e modelli**: scatto di prova e stato dei due modelli (vero o simulato).
 - **Scheda**: età degli ultimi dati, a che punto è lo sketch, ultimi messaggi `[MCU]`.
+
+I comandi partono subito: la pagina sveglia il ciclo del lato Linux. I servo però si
+muovono a rampa, 30°/s (`SERVO_SPEED_DEG_S`).
 
 ## Modelli AI
 
@@ -249,6 +280,28 @@ fermato lo sketch.
 - `LATITUDE`, `LONGITUDE`: ora ci sono quelle di Roma.
 - `AZ_SERVO_AT_REF`, `AZ_SERVO_DIR`: con il servo di base a 90° il pannello deve guardare a sud.
 - `PITCH_SERVO_AT_FLAT`, `PITCH_SERVO_DIR`, `TILT_MAX_DEG`: angolo servo a pannello orizzontale e corsa.
+- Servo montato al contrario (va dalla parte sbagliata e sbatte): `PITCH_SERVO_REVERSED 1`
+  (o `AZ_SERVO_REVERSED 1`) nello sketch. Oggi il pitch è invertito.
+
+## Modelli 3D
+
+Nella cartella `3d models/`, con i render in `3d models/render/`. Misure in millimetri.
+
+**Supporto del pannello** (STEP, da aprire nel CAD ed esportare per la stampa)
+
+| | | |
+|---|---|---|
+| ![Base del palo](3d%20models/render/01_Base_palo.png) | ![Forcella rotante](3d%20models/render/02_Forcella_rotante.png) | ![Telaio del pannello](3d%20models/render/03_Telaio_pannello_90x60.png) |
+| `01_Base_palo.step` · 90 × 70 × 90<br>base fissata al palo | `02_Forcella_rotante.step` · 37 × 35 × 83<br>gira attorno al palo (azimut) | `03_Telaio_pannello_90x60.step` · 97 × 67 × 21<br>telaio del pannello 90 × 60, si inclina (pitch) |
+
+**Scatole** (STL, pronte per lo slicer)
+
+| | | |
+|---|---|---|
+| ![Scatola Arduino, corpo](3d%20models/render/scatola1_arduino_corpo.png) | ![Scatola Arduino, coperchio](3d%20models/render/scatola1_arduino_coperchio.png) | |
+| `scatola1_arduino_corpo.stl` · 80 × 62 × 43<br>scatola della UNO Q con lo shield | `scatola1_arduino_coperchio.stl` · 80 × 62 × 5 | |
+| ![Scatola LED, corpo](3d%20models/render/scatola2_led_corpo.png) | ![Scatola LED, coperchio](3d%20models/render/scatola2_led_coperchio.png) | |
+| `scatola2_led_corpo.stl` · 50 × 40 × 28<br>scatola della scheda dei LED e delle valvole, fatta dalla collega | `scatola2_led_coperchio.stl` · 47 × 37 × 6 | |
 
 ## Prove
 

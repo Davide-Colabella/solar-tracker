@@ -432,11 +432,10 @@
       <section class="block">
         <h2>LED</h2>
         <div class="btns" style="margin-top:0" id="ledBtns">
-          <button type="button" class="b" data-led="1">Stato (D4)</button>
-          <button type="button" class="b" data-led="2">Azimut (D5)</button>
+          <button type="button" class="b" data-led="1">Stato (D8)</button>
           <button type="button" class="b" data-led="8">Pianta (D6)</button>
           <button type="button" class="b" data-led="16">Meteo (D7)</button>
-          <button type="button" class="b" data-led="27">Tutti</button>
+          <button type="button" class="b" data-led="25">Tutti</button>
           <button type="button" class="b" data-led="seq">Uno alla volta</button>
           <button type="button" class="b" data-led="0">Fine</button>
         </div>
@@ -777,7 +776,7 @@ function renderTest(s) {
     const raw = x.light.ok ? (x.light.raw == null ? x.light.pct : x.light.raw) : null, dig = !!(s.light && s.light.digital);
     body.replaceChildren(
       sensRow("Aria esterna (AHT20, porta I2C)", x.ambient.ok ? x.ambient.t.toFixed(1) + " °C, " + x.ambient.rh + "%" : "—", ...st(x.ambient)),
-      sensRow("Sotto il pannello (AHT20, porta D8)", x.under.ok ? x.under.t.toFixed(1) + " °C, " + x.under.rh + "%" : "—", ...st(x.under)),
+      sensRow("Sotto il pannello (AHT20, porta D4)", x.under.ok ? x.under.t.toFixed(1) + " °C, " + x.under.rh + "%" : "—", ...st(x.under)),
       sensRow(dig ? "Fotoresistore (uscita DO su D2)" : "Fotoresistore (A1)", raw == null ? "—" : dig ? (raw < 50 ? "buio" : "luce") : raw + "% grezzo", ...st(x.light)),
       sensRow("Corrente del pannello (INA219)", x.ina.ok ? x.ina.v.toFixed(2) + " V, " + x.ina.ma + " mA" : "—", ...st(x.ina, true)),
       sensRow("Umidità del terreno (A4)", x.soil.ok ? x.soil.pct + "%" : "—", ...st(x.soil, true)),
@@ -786,7 +785,7 @@ function renderTest(s) {
     tag("tagPitch", x.servo_pitch.ok ? "ok" : "stub", x.servo_pitch.ok ? "montato" : "non montato");
     tag("tagAz", x.servo_az.ok ? "ok" : "stub", x.servo_az.ok ? "montato" : "non montato");
     $("notePitch").textContent = "La scheda dice: " + x.servo_pitch.deg + "°." + (x.servo_pitch.ok ? "" : " Non è montato (HAS_SERVO_PITCH nello sketch).");
-    $("noteAz").textContent = "La scheda dice: " + x.servo_az.deg + "°." + (x.servo_az.ok ? "" : " Non è montato: si accende solo il LED su D5 (HAS_SERVO_AZ nello sketch).");
+    $("noteAz").textContent = "La scheda dice: " + x.servo_az.deg + "°." + (x.servo_az.ok ? "" : " Non è montato: metti HAS_SERVO_AZ a 1 nello sketch.");
     if (Date.now() - servoTouched > 4000) {
       $("sPitch").value = d.servo.pitch != null ? d.servo.pitch : x.servo_pitch.deg;
       $("sAz").value = d.servo.az != null ? d.servo.az : x.servo_az.deg;
@@ -831,7 +830,7 @@ document.querySelectorAll(".btns[data-axis] button").forEach(b => b.addEventList
   sendServo(axis, b.dataset.deg);
 }));
 document.querySelectorAll("#ledBtns button").forEach(b => b.addEventListener("click", () => {
-  if (b.dataset.led === "seq") { [1, 2, 8, 16, 0].forEach((mask, i) => setTimeout(() => tryDebug("ledNote", "leds", { mask }), i * 2500)); return; }
+  if (b.dataset.led === "seq") { [1, 8, 16, 0].forEach((mask, i) => setTimeout(() => tryDebug("ledNote", "leds", { mask }), i * 2500)); return; }
   tryDebug("ledNote", "leds", { mask: +b.dataset.led });
 }));
 $("camBtn").addEventListener("click", async () => {

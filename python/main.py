@@ -74,10 +74,12 @@ Bridge.provide("mcu_log", tracker.on_mcu_log)
 def loop():
     try:
         if director is not None:
-            time.sleep(0.5)
+            tracker.wake.wait(0.5)
+            tracker.wake.clear()
             tracker.tick(now=director.update(), wall=time.time())
         else:
-            time.sleep(1)
+            tracker.wake.wait(1)
+            tracker.wake.clear()
             tracker.tick()
     except Exception:
         log.exception("errore nel ciclo di controllo")

@@ -84,6 +84,7 @@ class Tracker:
         self._last_now: datetime | None = None
         self._manual: dict | None = None            # {"azimuth", "tilt", "until"} mentre comanda la pagina
         self._kick = False                          # la pagina chiede una decisione immediata
+        self.wake = threading.Event()               # un comando della pagina sveglia subito il ciclo
         self._valve_cmd: tuple | None = None        # comando a mano delle valvole: (maschera delle linee, secondi)
         self._valve_plan: dict = {}                 # linea -> (apre, chiude), orologio reale
         # Prova dei componenti (pagina "Prova componenti"): finche' e' attiva non si decide nulla
@@ -398,6 +399,7 @@ class Tracker:
         mask = everything if lines is None else int(lines) & everything
         seconds = max(0, min(int(config.WATER_MAX_OPEN_S), int(round(float(seconds)))))
         self._valve_cmd = (mask, seconds)
+        self.wake.set()
         return {"queued": True, "seconds": seconds, "lines": mask}
 
     def _plan_valves(self, mask: int, seconds: int, in_sequence: bool) -> None:
@@ -458,6 +460,7 @@ class Tracker:
         if action == "stop":
             if self._debug is not None:
                 self._debug["until"] = 0.0          # il ciclo chiude la prova e riparte in automatico
+                self.wake.set()
             return {"active": False}
         if action == "camera":
             return self._debug_camera()
@@ -479,6 +482,7 @@ class Tracker:
             debug["ask_stage"] = True
         elif action != "start":
             return {"error": f"Comando sconosciuto: {action}"}
+        self.wake.set()
         return {"active": True}
 
     def _debug_tick(self, debug: dict, wall: float, ts: float) -> None:
@@ -658,6 +662,7 @@ class Tracker:
             self._event("Comando manuale dalla pagina web")
         log.info("comando manuale: azimut %.0f, tilt %.0f", pose.azimuth, pose.tilt)
         self._kick = True           # si muove subito (in basso consumo: sveglia la scheda)
+        self.wake.set()
         return self._manual_state()
 
     def set_auto(self) -> dict:
@@ -666,6 +671,7 @@ class Tracker:
             self._event("Ritorno in automatico")
             log.info("comando manuale terminato: ritorno in automatico")
             self._kick = True
+            self.wake.set()
         return self._manual_state()
 
     def _manual_state(self) -> dict:
