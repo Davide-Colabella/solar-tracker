@@ -46,7 +46,7 @@
  *  ELETTROVALVOLE: 4 linee di irrigazione, comandate da un integrato pilota
  *  (oggi accende 4 LED, domani le valvole vere con lo stesso circuito).
  *  Due cavi Grove verso la scatola delle valvole:
- *      porta D6  ->  D6 (giallo) = linea 1,  D7 (bianco) = linea 2
+ *      porta A0  ->  A0 (giallo) = linea 1,  A1 (bianco) = linea 2
  *      porta A2  ->  A2 (giallo) = linea 3,  A3 (bianco) = linea 4
  *  Livello alto = valvola aperta (VALVE_ACTIVE_HIGH). I pin danno 3,3 V e pochi
  *  mA: sempre attraverso l'integrato pilota, mai una valvola direttamente.
@@ -58,10 +58,10 @@
  *                 lampeggio veloce = il lato Linux non sta comandando
  *  D5   AZIMUT    acceso mentre l'asse di azimut si muove: fa le veci del
  *                 secondo servo finche' non viene montato
- *  A0   PIANTA    fisso = pannello aperto per dare luce alla pianta;
+ *  D6   PIANTA    fisso = pannello aperto per dare luce alla pianta;
  *                 lampeggiante = comando manuale dalla pagina web
- *  A1   METEO     fisso = piove; veloce = sicurezza vento
- *       (porta "A0": giallo = PIANTA, bianco = METEO. Gli stessi due LED
+ *  D7   METEO     fisso = piove; veloce = sicurezza vento
+ *       (porta "D6": giallo = PIANTA, bianco = METEO. Gli stessi due LED
  *       escono in copia anche su D11 e D12, come prima.)
  *
  *  Camera pianta: USB sul connettore USB-C (lato Linux), nessun pin MCU.
@@ -128,7 +128,7 @@ const int PIN_SOFT_SDA = D3;   // filo bianco
 const int PIN_SERVO_AZ = D9;
 const int PIN_SERVO_PITCH = D10;
 const int VALVE_COUNT = 4;
-const int PIN_VALVE[VALVE_COUNT] = {D6, D7, A2, A3};   // linee 1..4
+const int PIN_VALVE[VALVE_COUNT] = {A0, A1, A2, A3};   // linee 1..4
 const int PIN_TANK = D13;
 const int PIN_SOIL = A4;        // umidita' del terreno [STUB]
 const int PIN_LIGHT = A1;       // uscita AO (LIGHT_DIGITAL 0)
@@ -139,8 +139,8 @@ const int PIN_LIGHT_DO = D2;    // uscita DO (LIGHT_DIGITAL 1)
 const int PIN_LED_STATUS = D4;    // battito: 1 lampo ok, 2 lampi sensore mancante, veloce Linux assente
 const int PIN_LED_AZ = D5;        // asse di azimut in movimento (reale o simulato)
 const int PIN_LED_PITCH = -1;     // asse di pitch in movimento
-const int PIN_LED_PLANT = A0;     // fisso luce alla pianta, lampeggiante comando manuale (porta "A0", filo giallo)
-const int PIN_LED_WEATHER = A1;   // fisso pioggia, veloce sicurezza vento (porta "A0", filo bianco)
+const int PIN_LED_PLANT = D6;     // fisso luce alla pianta, lampeggiante comando manuale (porta "D6", filo giallo)
+const int PIN_LED_WEATHER = D7;   // fisso pioggia, veloce sicurezza vento (porta "D6", filo bianco)
 // Gli stessi due LED escono in copia anche sui pin di prima: funzionano dovunque li colleghi.
 const int PIN_LED_PLANT_OLD = D11;
 const int PIN_LED_WEATHER_OLD = D12;

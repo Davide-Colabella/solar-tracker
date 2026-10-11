@@ -44,9 +44,9 @@ porta D2 e il fotoresistore si legge dalla sua uscita digitale.
 | **I2C** (una qualsiasi) | AHT20 n.1 "aria esterna", cavo Grove intero | | SDA/SCL (D20/D21), I2C via software |
 | **D2** | fotoresistore, uscita **DO** (D2) | **non collegare** (è D3) | rosso → VCC, nero → GND del modulino. AO resta scollegato |
 | **D4** | LED stato (D4) | LED azimut (D5) | |
-| **D6** | valvole, linea 1 (D6) | linea 2 (D7) | verso l'integrato pilota |
+| **D6** | LED luce pianta (D6) | LED meteo (D7) | gli stessi due LED escono in copia su D11 e D12 |
 | **D8** | AHT20 n.2 "sotto il pannello", cavo Grove intero | | D8 = SCL, D9 = SDA, I2C via software |
-| **A0** | LED luce pianta (A0) | LED meteo (A1) | gli stessi due LED escono in copia su D11 e D12 |
+| **A0** | valvole, linea 1 (A0) | linea 2 (A1) | verso l'integrato pilota |
 | **A2** | valvole, linea 3 (A2) | linea 4 (A3) | verso l'integrato pilota |
 | pin della scheda | servo pitch: **D10** segnale, **5V**, **GND** | | l'unico che resta sui pin |
 | **USB-C** | alimentazione, camera USB | | lato Linux |
@@ -73,9 +73,9 @@ Chi non serve si disattiva mettendo `-1` al posto del pin nello sketch.
 |---|---|---|
 | Stato | D4 | 1 lampo ogni 2 s = tutto ok · 2 lampi = manca un AHT20 · lampeggio veloce = il lato Linux non sta comandando |
 | Azimut | D5 | acceso mentre l'asse di azimut si muove: fa le veci del secondo servo finché non viene montato |
-| Linee 1–4 | D6, D7, A2, A3 | nella scatola delle valvole: acceso = linea aperta. Sono le uscite vere delle elettrovalvole |
-| Luce pianta | A0 (e D11) | fisso = pannello aperto per dare luce alla pianta · lampeggiante = comando manuale dalla pagina web |
-| Meteo | A1 (e D12) | fisso = piove · lampeggio veloce = sicurezza vento |
+| Linee 1–4 | A0, A1, A2, A3 | nella scatola delle valvole: acceso = linea aperta. Sono le uscite vere delle elettrovalvole |
+| Luce pianta | D6 (e D11) | fisso = pannello aperto per dare luce alla pianta · lampeggiante = comando manuale dalla pagina web |
+| Meteo | D7 (e D12) | fisso = piove · lampeggio veloce = sicurezza vento |
 
 C'è anche un LED per il pitch (`PIN_LED_PITCH`), spento di default.
 
@@ -90,7 +90,7 @@ porte Grove). Un elettrolitico da 470–1000 µF tra 5V e GND vicino al servo ev
 i reset quando parte. Con due servo serve un'alimentazione a 5 V separata, con
 GND in comune.
 
-Elettrovalvole: quattro linee, su D6, D7, A2 e A3. I pin danno 3,3 V e pochi mA,
+Elettrovalvole: quattro linee, su A0, A1, A2 e A3. I pin danno 3,3 V e pochi mA,
 quindi comandano solo l'integrato pilota sulla millefori (oggi accende 4 LED,
 domani le valvole vere con lo stesso circuito); le valvole hanno la loro
 alimentazione. Livello alto = linea aperta (`VALVE_ACTIVE_HIGH`). Con le valvole

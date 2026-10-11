@@ -417,8 +417,8 @@
       <section class="block water">
         <h2>Elettrovalvole <span class="tag" id="tagValve"></span></h2>
         <div class="btns" style="margin-top:0">
-          <button type="button" class="b water" data-valve="3" data-lines="1">Linea 1 (D6)</button>
-          <button type="button" class="b water" data-valve="3" data-lines="2">Linea 2 (D7)</button>
+          <button type="button" class="b water" data-valve="3" data-lines="1">Linea 1 (A0)</button>
+          <button type="button" class="b water" data-valve="3" data-lines="2">Linea 2 (A1)</button>
           <button type="button" class="b water" data-valve="3" data-lines="4">Linea 3 (A2)</button>
           <button type="button" class="b water" data-valve="3" data-lines="8">Linea 4 (A3)</button>
           <button type="button" class="b" data-valve="3" data-lines="15">Tutte insieme</button>
@@ -434,8 +434,8 @@
         <div class="btns" style="margin-top:0" id="ledBtns">
           <button type="button" class="b" data-led="1">Stato (D4)</button>
           <button type="button" class="b" data-led="2">Azimut (D5)</button>
-          <button type="button" class="b" data-led="8">Pianta (A0)</button>
-          <button type="button" class="b" data-led="16">Meteo (A1)</button>
+          <button type="button" class="b" data-led="8">Pianta (D6)</button>
+          <button type="button" class="b" data-led="16">Meteo (D7)</button>
           <button type="button" class="b" data-led="27">Tutti</button>
           <button type="button" class="b" data-led="seq">Uno alla volta</button>
           <button type="button" class="b" data-led="0">Fine</button>
@@ -602,7 +602,7 @@ function showValve(v) {
   tag("tagValve", v.simulated ? "stub" : "ok", v.simulated ? "LED al posto delle valvole" : "valvole montate");
   const open = lines.map((on, i) => on ? i + 1 : 0).filter(Boolean);
   $("tValveNote").textContent = (open.length ? "Aperte: " + open.join(", ") + "." : "Tutte chiuse.")
-    + " Ogni pulsante apre per 3 secondi. Uscite: D6, D7 (porta Grove D6) e A2, A3 (porta Grove A2).";
+    + " Ogni pulsante apre per 3 secondi. Uscite: A0, A1 (porta Grove A0) e A2, A3 (porta Grove A2).";
 }
 async function sendValve(seconds, lines, noteId) {
   try { await post("/valve", { seconds, lines }); } catch (e) { $(noteId).textContent = e.message; }
