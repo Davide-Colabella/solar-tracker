@@ -365,7 +365,7 @@ Nella cartella `3d models/`, con i render in `3d models/render/`. Misure in mill
 
 | Controllo elettrovalvole | Monitor tensione e corrente |
 |---|---|
-| ![PCB controllo elettrovalvole](hardware/valve-controller/valve-controller-render.png) | ![PCB monitor INA219](hardware/ina-panel-monitor/ina-panel-monitor-3d.png) |
+| ![PCB controllo elettrovalvole](hardware/valve-controller/valve-controller-3d.png) | ![PCB monitor INA219](hardware/ina-panel-monitor/ina-panel-monitor-3d.png) |
 | [Progetto KiCad](hardware/valve-controller/valve-controller.kicad_pro) · 80 × 55 mm<br>L293D, quattro canali per elettrovalvole a 5 V, numerati da 1 a 4. [Collegamenti](schema.md). | [Progetto KiCad](hardware/ina-panel-monitor/ina-panel-monitor.kicad_pro) · 60 × 45 mm<br>INA219 dopo il DC/DC: ramo a 5 V, limite di progetto 2 A, I²C a 3,3 V. [Documentazione](hardware/ina-panel-monitor/README.md). |
 
 ## Prove

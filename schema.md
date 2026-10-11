@@ -7,7 +7,7 @@ La scheda usa un **L293D DIP-16** per comandare quattro elettrovalvole normalmen
 - [Progetto KiCad](hardware/valve-controller/valve-controller.kicad_pro).
 - [Schematico](hardware/valve-controller/valve-controller.kicad_sch) e [anteprima SVG](hardware/valve-controller/valve-controller.svg).
 - [PCB con piste](hardware/valve-controller/valve-controller.kicad_pcb).
-- [Render 3D](hardware/valve-controller/valve-controller-render.png).
+- [Render 3D](hardware/valve-controller/valve-controller-3d.png).
 
 Il PCB misura **80 × 55 mm**, con spessore 1,6 mm, due strati di rame e quattro fori M3. I canali sono numerati **1, 2, 3, 4** sotto i morsetti J2–J5. Le piste sono da 0,3 mm per i segnali, 0,6 mm per le uscite e la logica, 0,8 mm per l'alimentazione delle valvole e GND; i via sono da 0,8 mm con foro da 0,4 mm.
 
