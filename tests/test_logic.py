@@ -18,7 +18,7 @@ import controller as ctl  # noqa: E402
 import solar  # noqa: E402
 import weather  # noqa: E402
 from ai_model import PlantResult, StubAI  # noqa: E402
-from irrigation import Irrigation, vpd_kpa  # noqa: E402
+from irrigation import Irrigation, garden_plan, vpd_kpa  # noqa: E402
 from plants import profile_for  # noqa: E402
 from tracker import Tracker  # noqa: E402
 
@@ -534,6 +534,26 @@ def test_vpd_formula():
     assert abs(vpd_kpa(20.0, 57.2) - 1.0) < 0.01
     assert abs(vpd_kpa(30.0, 40.0) - 2.55) < 0.02
     assert vpd_kpa(25.0, 100.0) == 0.0
+
+
+def test_garden_plan_uses_sensors_and_avoids_hot_hours():
+    names = ("basilico", "pomodoro", "fragola", "lavanda")
+    cards = garden_plan(names, tel(NOON), NOON, NOON.timestamp() - 2 * 3600, 5000.0)
+    assert [c["line"] for c in cards] == [1, 2, 3, 4] and cards[1]["name"] == "pomodoro"
+    assert cards[0]["checks"][0]["state"] == "na"              # senza fotoresistore la luce non si giudica
+    tomato = cards[1]
+    assert not tomato["ok"]                                     # 2 ore a mezzogiorno: ha gia' sete
+    assert tomato["next"]["in_min"] > 120 and tomato["next"]["note"] == "rimandata fuori dalle ore calde"
+    lavender = cards[3]                                         # beve poco: tocca piu' tardi del pomodoro
+    assert lavender["next"]["in_min"] >= tomato["next"]["in_min"]
+
+    soil = tel(NOON, status=ALL_OK | ctl.ST_SOIL, soil_pct=10.0, light=80.0)
+    basil = garden_plan(names, soil, NOON, None, 5000.0)[0]
+    assert basil["next"]["in_min"] == 0                          # terreno molto secco: subito, anche col sole alto
+    assert basil["checks"][0]["state"] == "ok"                   # luce 80 sopra il minimo
+
+    dry_tank = garden_plan(names, tel(NOON), NOON, None, 0.0)
+    assert all("serbatoio vuoto" in c["next"]["note"] for c in dry_tank)
 
 
 def test_water_balance_follows_plant_and_air_dryness():

@@ -15,12 +15,13 @@ oppure letto dal galleggiante quando c'e'.
 import logging
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import config
-from controller import (ST_AHT_AMBIENT, ST_AHT_PLANT, ST_SOIL, ST_TANK_OK, ST_TANK_SENSOR,
+import solar
+from controller import (ST_AHT_AMBIENT, ST_AHT_PLANT, ST_LIGHT, ST_SOIL, ST_TANK_OK, ST_TANK_SENSOR,
                         ST_VALVE_OPEN, StateStore, Telemetry)
-from plants import PlantProfile
+from plants import PlantProfile, profile_for
 from weather import Weather
 
 log = logging.getLogger("irrigazione")
@@ -37,6 +38,16 @@ def vpd_kpa(temp_c: float, rh_pct: float) -> float:
     """Deficit di pressione di vapore: quanto l'aria 'tira' acqua dalla pianta."""
     saturation = 0.6108 * math.exp(17.27 * temp_c / (temp_c + 237.3))
     return max(0.0, saturation * (1.0 - rh_pct / 100.0))
+
+
+def demand_factor(tel: Telemetry | None) -> float:
+    """Consumo della pianta rispetto a water_ml_day, dalla secchezza dell'aria (da 0,3 a 2,5)."""
+    demand = 1.0
+    if tel and tel.has(ST_AHT_PLANT):
+        demand = vpd_kpa(tel.t_plant, tel.rh_plant) / config.VPD_REFERENCE_KPA
+    elif tel and tel.has(ST_AHT_AMBIENT):
+        demand = vpd_kpa(tel.t_ambient, tel.rh_ambient) / config.VPD_REFERENCE_KPA
+    return max(0.3, min(2.5, demand))
 
 
 class Irrigation:
@@ -70,13 +81,7 @@ class Irrigation:
             s["water_day"], s["water_today_ml"] = day, 0.0
 
         # --- consumo della pianta, scalato con la secchezza dell'aria
-        demand = 1.0
-        if tel and tel.has(ST_AHT_PLANT):
-            demand = vpd_kpa(tel.t_plant, tel.rh_plant) / config.VPD_REFERENCE_KPA
-        elif tel and tel.has(ST_AHT_AMBIENT):
-            demand = vpd_kpa(tel.t_ambient, tel.rh_ambient) / config.VPD_REFERENCE_KPA
-        demand = max(0.3, min(2.5, demand))
-        s["water_deficit_ml"] += profile.water_ml_day * demand * dt / 86400.0
+        s["water_deficit_ml"] += profile.water_ml_day * demand_factor(tel) * dt / 86400.0
 
         # --- pioggia: riempie il serbatoio e, se arriva alla pianta, la disseta
         raining = bool(wx and wx.raining_now())
@@ -171,3 +176,88 @@ class Irrigation:
             self.s["tank_ml"] = 0.0
         self.s["last_water"] = ts          # riprova dopo la pausa, non a ogni ciclo
         self._store.save()
+
+
+# ------------------------------------------------------- le mie piante (mockup)
+
+def _clock_label(ts: float) -> str:
+    return f"{datetime.fromtimestamp(ts, timezone.utc) + timedelta(hours=2):%H:%M}"   # ora italiana, come la pagina
+
+
+def _out_of_hot_hours(ts: float) -> float:
+    """Primo momento, da ts in poi, con il sole sotto WATER_HOT_ELEVATION_DEG (al massimo 24 ore dopo)."""
+    for step in range(0, 24 * 6 + 1):
+        when = ts + step * 600.0
+        sun = solar.sun_position(datetime.fromtimestamp(when, timezone.utc), config.LATITUDE, config.LONGITUDE)
+        if sun.elevation <= config.WATER_HOT_ELEVATION_DEG:
+            return when
+    return ts
+
+
+def garden_plan(names, tel: Telemetry | None, now: datetime, last_water: float | None, tank_ml: float) -> list[dict]:
+    """Una pianta per linea: stato dai sensori presenti e prossima innaffiatura stimata.
+
+    E' un mockup: l'irrigazione vera segue ancora un solo profilo (quello riconosciuto dalla
+    foto) e divide la dose tra le linee. Qui si stima, con le stesse regole, cosa servirebbe
+    a ciascuna pianta: consumo scalato con l'aria secca, dose per linea, pausa minima, niente
+    acqua nelle ore calde salvo urgenza.
+    """
+    ts = now.timestamp()
+    demand = demand_factor(tel)
+    dose = config.WATER_DOSE_ML / config.VALVE_LINES
+    since = ts if last_water is None else last_water        # mai innaffiato: si parte da adesso
+    has = (lambda bit: bool(tel and tel.has(bit)))
+    t_air = tel.t_plant if has(ST_AHT_PLANT) else tel.t_ambient if has(ST_AHT_AMBIENT) else None
+    cards = []
+    for line, name in enumerate(names, 1):
+        p = profile_for(name)
+        rate = p.water_ml_day * demand / 86400.0            # ml al secondo
+        checks = []
+        if has(ST_LIGHT):
+            checks.append({"label": "Luce", "value": f"{tel.light_pct:.0f}% (minimo {p.light_min_pct})",
+                           "state": "ok" if tel.light_pct >= p.light_min_pct else "warn"})
+        else:
+            checks.append({"label": "Luce", "value": "fotoresistore assente", "state": "na"})
+        if t_air is not None:
+            checks.append({"label": "Temperatura", "value": f"{t_air:.1f} °C (massimo {p.max_temp_c:.0f})",
+                           "state": "ok" if t_air <= p.max_temp_c else "warn"})
+        else:
+            checks.append({"label": "Temperatura", "value": "AHT20 assenti", "state": "na"})
+
+        if has(ST_SOIL):
+            thirsty = tel.soil_pct < p.soil_min_pct
+            urgent = tel.soil_pct < p.soil_min_pct - 15
+            checks.append({"label": "Terreno", "value": f"{tel.soil_pct:.0f}% (minimo {p.soil_min_pct})",
+                           "state": "warn" if thirsty else "ok"})
+            due = ts if thirsty else None                   # col sensore si aspetta che il terreno scenda
+        else:
+            debt = rate * max(0.0, ts - since)
+            thirsty = debt >= dose
+            urgent = debt >= config.WATER_URGENT_DOSES * dose
+            checks.append({"label": "Acqua", "value": f"sete stimata {debt:.0f} ml su {dose:.0f}",
+                           "state": "warn" if thirsty else "ok"})
+            due = max(ts, since + dose / rate)
+
+        note = ""
+        if due is not None:
+            if last_water is not None:
+                due = max(due, last_water + config.WATER_MIN_INTERVAL_S)
+            later = due if urgent else _out_of_hot_hours(due)
+            if later > due + 60.0:
+                note = "rimandata fuori dalle ore calde"
+            due = later
+        if tank_ml < dose:
+            note = "serbatoio vuoto: non si può innaffiare"
+        elif due is None:
+            note = f"quando il terreno scende sotto il {p.soil_min_pct}%"
+
+        cards.append({
+            "line": line, "name": p.name, "light": p.light,
+            "need_today_ml": round(p.water_ml_day * demand),
+            "checks": checks,
+            "ok": all(c["state"] != "warn" for c in checks),
+            "next": {"at": None if due is None else _clock_label(due),
+                     "in_min": None if due is None else round((due - ts) / 60.0),
+                     "dose_ml": round(dose), "note": note},
+        })
+    return cards

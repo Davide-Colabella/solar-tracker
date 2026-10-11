@@ -160,6 +160,20 @@
   button:focus-visible, input:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
   #manState.on { color: var(--alert); font-weight: 700; }
 
+  /* le mie piante */
+  .garden { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .pcard { border: 1px solid var(--line); border-left: 5px solid var(--leaf); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pcard.warn { border-left-color: var(--alert); }
+  .pcard header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .pcard header b { font: 600 19px/1.2 var(--head); overflow-wrap: anywhere; }
+  .pcard header small, .pcard .need { color: var(--muted); font-size: 13px; }
+  .pcard ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .pcard li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0;
+              border-top: 1px solid var(--hair); font-size: 14px; }
+  .pcard li span:nth-child(2) { overflow-wrap: anywhere; }
+  .pcard .plan { margin-top: 10px; padding: 8px 10px; border-radius: 9px; background: var(--water-soft); font-size: 14px; }
+  .pcard .plan b { font-variant-numeric: tabular-nums; }
+
   ol#events { margin: 0; padding: 0; list-style: none; font-size: 15px; columns: 2; column-gap: 28px; }
   @media (max-width: 820px) { ol#events { columns: 1; } }
   ol#events li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 8px; padding: 5px 0; break-inside: avoid; border-bottom: 1px solid var(--hair); }
@@ -369,6 +383,14 @@
         <div class="note" id="stubs"></div>
       </section>
     </div>
+
+    <section class="block water wide">
+      <h2>Le mie piante <span class="sim">mockup</span></h2>
+      <div class="garden" id="garden"></div>
+      <div class="note">Una pianta per linea (<code>GARDEN</code> in config.py). Lo stato viene dai sensori montati;
+        la prossima innaffiatura è una stima con le stesse regole dell'irrigazione. Per ora l'acqua vera segue
+        la pianta riconosciuta dalla foto, divisa tra le quattro linee.</div>
+    </section>
 
     <section class="block plain wide">
       <h2>Che cosa è successo</h2>
@@ -641,6 +663,38 @@ function drawScene(tilt, az, s) {
   $("face").style.opacity = tilt < 3 ? 0.25 : 1;
 }
 
+const CHECK_TAG = { ok: ["ok", "ok"], warn: ["no", "attenzione"], na: ["stub", "non misurato"] };
+function showGarden(list) {
+  $("garden").replaceChildren(...list.map(p => {
+    const card = document.createElement("article");
+    card.className = "pcard" + (p.ok ? "" : " warn");
+    const head = document.createElement("header"), name = document.createElement("b"), line = document.createElement("small");
+    name.textContent = p.name;
+    line.textContent = "Linea " + p.line + " · " + p.light;
+    head.append(name, line);
+    const need = document.createElement("div");
+    need.className = "need";
+    need.textContent = "Fabbisogno oggi circa " + p.need_today_ml + " ml";
+    const ul = document.createElement("ul");
+    for (const c of p.checks) {
+      const li = document.createElement("li"), k = document.createElement("span"), v = document.createElement("span"), t = document.createElement("span");
+      const [cls, word] = CHECK_TAG[c.state] || CHECK_TAG.na;
+      k.textContent = c.label; v.textContent = c.value; t.className = "tag " + cls; t.textContent = word;
+      li.append(k, v, t);
+      ul.append(li);
+    }
+    const plan = document.createElement("div");
+    plan.className = "plan";
+    const n = p.next;
+    const when = n.at == null ? "da decidere" : n.in_min <= 1 ? "adesso" : n.at + " (tra " + (n.in_min < 90 ? n.in_min + " min" : Math.round(n.in_min / 60) + " h") + ")";
+    const strong = document.createElement("b");
+    strong.textContent = when;
+    plan.append("Prossima innaffiatura: ", strong, ", " + n.dose_ml + " ml" + (n.note ? " — " + n.note : ""));
+    card.append(head, need, ul, plan);
+    return card;
+  }));
+}
+
 function render(s) {
   state = s;
   $("linkChip").hidden = true;
@@ -693,6 +747,8 @@ function render(s) {
   $("irrNote").textContent = v.open ? "Sta innaffiando" + (v.remaining_s ? ", ancora " + v.remaining_s + " s." : ".")
     : irr.pending ? "Innaffiatura richiesta (" + irr.pending + ")" + (irr.blocked ? ": in attesa, " + irr.blocked + "." : ".")
     : irr.blocked ? "In attesa: " + irr.blocked + "." : "";
+
+  showGarden(s.garden || []);
 
   if (s.events.length) {
     $("events").replaceChildren(...s.events.map(e => {

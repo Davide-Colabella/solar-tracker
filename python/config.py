@@ -110,6 +110,10 @@ LIGHT_CAL_MIN_SPAN = 5.0
 # --------------------------------------------------------------------------
 IRRIGATION_ENABLED = True
 VALVE_LINES = 4                     # linee di irrigazione, una valvola ciascuna (come VALVE_COUNT nello sketch)
+# Le mie piante (sezione mockup della pagina): una per linea, nell'ordine. Nomi come in plants.py
+# ("basilico", "fragola", "lavanda"...) o nome scientifico. Per ora servono solo a mostrarne
+# stato e prossima innaffiatura stimata: l'irrigazione vera segue la pianta riconosciuta dalla foto.
+GARDEN = ("basilico", "pomodoro", "fragola", "lavanda")
 VALVE_FLOW_ML_S = 10.0              # portata di UNA linea aperta: DA MISURARE con un bicchiere graduato
 WATER_DOSE_ML = 150.0               # acqua per singola innaffiatura, divisa tra le linee (aperte una dopo l'altra)
 WATER_MAX_OPEN_S = 60               # apertura massima di una linea, come VALVE_MAX_OPEN_MS nello sketch

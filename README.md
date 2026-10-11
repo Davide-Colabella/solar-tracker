@@ -165,6 +165,14 @@ Con l'app in esecuzione: `http://<nome-della-scheda>.local:7000`. Ha due pagine.
   a mano (si scelgono le linee e i secondi, al massimo 60; si richiudono da sole o
   con "Chiudi tutto"; non vale la pausa di 5 minuti dell'automatico, resta il
   blocco a serbatoio vuoto).
+- **Le mie piante** (mockup): una scheda per pianta, una per linea (`GARDEN` in
+  `config.py`). Per ognuna: luce, temperatura e acqua giudicate con i sensori montati
+  (il fotoresistore contro la luce minima della pianta, l'AHT20 sotto il pannello contro la
+  sua temperatura massima, il sensore di terreno se c'è, altrimenti la sete stimata), il
+  fabbisogno di oggi e la **prossima innaffiatura stimata**: consumo scalato con l'aria secca,
+  dose divisa per linea, pausa minima, rimandata fuori dalle ore calde salvo urgenza, bloccata
+  a serbatoio vuoto. È una stima: per ora l'acqua vera segue la pianta riconosciuta dalla foto,
+  con la dose divisa tra le quattro linee.
 - **Muovi il pannello a mano**: due cursori e pose rapide. Torna in automatico con
   il pulsante o dopo 10 minuti (`MANUAL_TIMEOUT_S`). Il vento forte vince comunque.
 
@@ -329,6 +337,7 @@ cambiati insieme (indicati con ↔).
 | Meteo | `WEATHER_REFRESH_S`, `WEATHER_MAX_AGE_S` | ogni 30 minuti, validità 6 ore |
 | Luce alla pianta | `PLANT_LIGHT_ENABLED`, `LIGHT_STEP`, `LIGHT_HYSTERESIS_PCT` | attiva, un quarto di corsa per decisione, isteresi 15 punti |
 | Modelli AI | `HEALTH_MODEL_*`, `PLANT_MODEL_*`, `MODEL_*`, `*_KEYWORDS`, `*_MIN_CONFIDENCE` | vedi "Modelli AI" |
+| Le mie piante | `GARDEN` | basilico, pomodoro, fragola, lavanda (linee 1–4): **da cambiare con le tue** |
 | Irrigazione | `VALVE_LINES`, `VALVE_FLOW_ML_S`, `WATER_DOSE_ML`, `WATER_MAX_OPEN_S`, `WATER_MIN_INTERVAL_S`, `WATER_DAILY_CAP_FACTOR` | 4 linee, 10 ml/s (**da misurare**), 150 ml a dose, max 60 s, pausa 30 minuti |
 | Serbatoio | `TANK_CAPACITY_ML`, `COLLECTOR_AREA_M2`, `COLLECTOR_EFFICIENCY`, `RAIN_ON_PLANT_FRACTION` | 5 l; la pianta non riceve pioggia (0) |
 | Cadenze | `DECISION_PERIOD_S`, `MANUAL_TIMEOUT_S`, `DEBUG_TIMEOUT_S` | una decisione al minuto; manuale e prova durano al massimo 10 minuti |

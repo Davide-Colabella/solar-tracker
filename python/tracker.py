@@ -19,7 +19,7 @@ from controller import (LIGHT, LX_LIGHT, LX_MANUAL, LX_RAIN, LX_SAFE, MANUAL, SA
                         ST_FAILSAFE, ST_IMU, ST_INA, ST_LIGHT, ST_MOVING, ST_SERVO_AZ, ST_SERVO_PITCH, ST_SOIL,
                         ST_LIGHT_DIGITAL, ST_SYNCED, ST_TANK_OK, ST_TANK_SENSOR, ST_VALVE, ST_VALVE_LINE1,
                         ST_VALVE_OPEN, Controller, Decision, StateStore, Telemetry)
-from irrigation import Irrigation
+from irrigation import Irrigation, garden_plan
 from solar import Pose
 
 log = logging.getLogger("tracker")
@@ -739,6 +739,7 @@ class Tracker:
                            "today_ml": round(self.irrigation.s["water_today_ml"]),
                            "blocked": self.irrigation.blocked,
                            "pending": self.irrigation.force_reason},
+            "garden": garden_plan(config.GARDEN, tel, now, self.irrigation.s["last_water"], self.irrigation.tank_ml),
             "mcu": None,
         }
         if tel is not None:
