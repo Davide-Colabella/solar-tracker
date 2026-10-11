@@ -166,7 +166,7 @@ const int SERVO_US_MAX = 2400;
 
 // Limiti meccanici in gradi servo (protezione finale, anche se Linux sbaglia)
 const float AZ_MIN_DEG = 0.0f, AZ_MAX_DEG = 180.0f;
-const float PITCH_MIN_DEG = 0.0f, PITCH_MAX_DEG = 135.0f;   // tarata a mano: 0 = pannello parallelo alla base
+const float PITCH_MIN_DEG = 65.0f, PITCH_MAX_DEG = 150.0f;  // tarata a mano: 135 = in piano, 65 = alzato, 150 = dall'altra parte
 
 // 1 = il servo gira al contrario: l'impulso va a 180 - angolo. Tutto il resto
 // (Linux, pagina web, prova all'avvio) continua a ragionare con gli stessi gradi.

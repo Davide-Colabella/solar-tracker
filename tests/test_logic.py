@@ -168,7 +168,11 @@ def test_light_sensor_opens_and_closes_the_panel():
     assert shares[0] == config.LIGHT_STEP and shares == sorted(shares) and shares[-1] == 1.0
     d = step(light=lo - 10)
     assert d.mode == ctl.LIGHT and "tutto aperto" in d.reason
-    assert abs(solar.cos_incidence(d.sun, d.pose.azimuth, d.pose.tilt)) < 0.2    # di taglio: la luce passa
+    # di taglio quanto la corsa permette: la luce passa
+    edge = min(abs(solar.cos_incidence(d.sun, solar.servo_to_az(sv), tl))
+               for sv in range(int(config.AZ_SERVO_MIN), int(config.AZ_SERVO_MAX) + 1, 2)
+               for tl in range(int(config.TILT_MIN_DEG), int(config.TILT_MAX_DEG) + 1, 2))
+    assert abs(solar.cos_incidence(d.sun, d.pose.azimuth, d.pose.tilt)) < edge + 0.05
     assert abs(d.pose.tilt - tracking_tilt) > 20                    # e il servo di pitch si vede muovere
     d = step(light=lo + 5)                          # luce giusta: resta com'e'
     assert d.mode == ctl.LIGHT and d.light_share == 1.0
@@ -358,7 +362,9 @@ def test_tracker_startup_sync_heartbeat_and_deadband():
     feed(tr, mcu, now, imu_tilt=40.0)       # il pannello e' fisicamente a 40 gradi
     tr.tick(now)
     assert mcu.names() == ["sync_position", "set_target", "set_failsafe"]
-    assert mcu.calls[0][1] == (9000, int(round(solar.tilt_to_servo(40.0) * 100)))
+    # l'inclinometro da' solo il valore assoluto: se il pannello va da tutte e due le parti non basta
+    start_tilt = 40.0 if config.TILT_MIN_DEG >= 0.0 else config.STOW_TILT_DEG
+    assert mcu.calls[0][1] == (9000, int(round(solar.tilt_to_servo(start_tilt) * 100)))
     first_target = mcu.calls[1][1]
     assert mcu.failsafe == (first_target[0] / 100.0, solar.tilt_to_servo(config.STOW_TILT_DEG))
 
@@ -834,7 +840,7 @@ def test_manual_control_from_web_page_and_light_sensor():
 
     state = tr.set_manual(120.0, 35.0)                          # la pagina prende il comando
     assert state["active"] and (state["azimuth"], state["tilt"]) == (120, 35)
-    assert (state["az_min"], state["az_max"], state["tilt_min"], state["tilt_max"]) == (90, 270, 0, config.TILT_MAX_DEG)
+    assert (state["az_min"], state["az_max"], state["tilt_min"], state["tilt_max"]) == (90, 270, config.TILT_MIN_DEG, config.TILT_MAX_DEG)
     step()                                                      # si muove subito, senza aspettare il minuto
     assert tr.last_decision.mode == ctl.MANUAL
     assert abs(mcu.az - solar.az_to_servo(120.0)) < 0.01 and abs(mcu.pitch - solar.tilt_to_servo(35.0)) < 0.01

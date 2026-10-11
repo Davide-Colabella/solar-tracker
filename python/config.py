@@ -21,10 +21,10 @@ AZ_SERVO_DIR = 1.0          # -1 se il servo gira al contrario
 AZ_SERVO_MIN = 0.0          # corsa utile del servo di base
 AZ_SERVO_MAX = 180.0
 
-PITCH_SERVO_AT_FLAT = 0.0   # angolo servo con il pannello parallelo alla base (tarato)
-PITCH_SERVO_DIR = 1.0       # -1 se il servo gira al contrario
-TILT_MIN_DEG = 0.0          # negativo solo se il pannello puo' ribaltarsi all'indietro
-TILT_MAX_DEG = 135.0        # corsa tarata: oltre tocca (come PITCH_MAX_DEG nello sketch)
+PITCH_SERVO_AT_FLAT = 135.0 # angolo servo con il pannello in piano (tarato)
+PITCH_SERVO_DIR = -1.0      # il pannello si alza scendendo verso 65
+TILT_MIN_DEG = -15.0        # dall'altra parte fino a servo 150 (come PITCH_MAX_DEG nello sketch)
+TILT_MAX_DEG = 70.0         # alzato fino a servo 65 (come PITCH_MIN_DEG nello sketch)
 
 MOVE_DEADBAND_DEG = 1.5     # non muovere per correzioni piu' piccole di cosi'
 
