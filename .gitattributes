@@ -1,0 +1,4 @@
+
+# Model weights are binary artifacts.
+*.onnx binary
+*.pth binary

@@ -70,14 +70,15 @@ PLANT_CAMERA_SOURCE = None          # None = prima camera trovata, oppure "usb:0
 
 # Modelli AI (file ONNX in python/models/). Con None il modello e' simulato.
 # Le etichette vanno NELL'ORDINE DELLE USCITE del modello.
-HEALTH_MODEL_FILE = "plant_wilting.onnx"
-HEALTH_MODEL_LABELS = ("sana", "appassita")     # uscita 0, uscita 1: DA CONFERMARE con chi l'ha addestrato
+HEALTH_MODEL_FILE = "plantwatch.onnx"
+HEALTH_MODEL_LABELS = ("healthy", "wilted")   # ordine confermato da plantwatch.json
+HEALTH_MODEL_DIRECT_RESIZE = True            # bilineare 224x224, senza ritaglio
 # Tipo di pianta: MobileNetV3 addestrato su Pl@ntNet-300K, 1081 specie. Le etichette
 # (nomi scientifici, una per riga nell'ordine delle uscite) stanno in un file.
 PLANT_MODEL_FILE = "plantnet_mobilenetv3.onnx"
 PLANT_MODEL_LABELS = "plantnet_labels.txt"
-# Preparazione delle foto (quella standard di torchvision: lato corto a 256,
-# ritaglio centrale 224, normalizzazione ImageNet)
+# Preparazione per il riconoscitore di specie: lato corto a 256, ritaglio 224.
+# PlantWatch ridimensiona direttamente a 224x224; entrambi normalizzano ImageNet.
 MODEL_RESIZE = 256
 MODEL_INPUT_SIZE = 224
 MODEL_MEAN = (0.485, 0.456, 0.406)

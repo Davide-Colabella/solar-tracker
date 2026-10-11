@@ -23,9 +23,10 @@ def decode_image(data: str):
     raw = base64.b64decode(data.split(",", 1)[-1])
     try:
         import numpy as np
-        from PIL import Image
+        from PIL import Image, ImageOps
 
-        return np.asarray(Image.open(io.BytesIO(raw)).convert("RGB"))
+        with Image.open(io.BytesIO(raw)) as photo:
+            return np.asarray(ImageOps.exif_transpose(photo).convert("RGB"))
     except ImportError:
         import cv2
         import numpy as np

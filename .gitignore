@@ -4,3 +4,7 @@ __pycache__/
 # stato salvato dall app sulla scheda
 data/
 *.log
+
+# Local model training environments
+.venv/
+.cache/

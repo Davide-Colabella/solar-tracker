@@ -69,6 +69,23 @@ def _resize_rgb(image, short_side: int, crop: int):
     return arr[top:top + crop, left:left + crop]
 
 
+def _direct_resize_rgb(image, size: int):
+    """PlantWatch: EXIF, RGB, ridimensionamento bilineare senza ritaglio."""
+    import numpy as np
+    from PIL import Image, ImageOps
+
+    if not isinstance(image, Image.Image):
+        arr = np.asarray(image)
+        if arr.ndim == 2:
+            arr = np.stack([arr] * 3, axis=-1)
+        arr = arr[..., :3]
+        if arr.dtype != np.uint8:
+            arr = np.clip(arr, 0, 255).astype(np.uint8)
+        image = Image.fromarray(arr)
+    image = ImageOps.exif_transpose(image).convert("RGB")
+    return np.asarray(image.resize((size, size), Image.Resampling.BILINEAR))
+
+
 class OnnxClassifier:
     """Classificatore di immagini.
 
@@ -79,15 +96,22 @@ class OnnxClassifier:
     della specie.
     """
 
-    def __init__(self, path: str, labels, by_genus: bool = False):
+    def __init__(self, path: str, labels, by_genus: bool = False, direct_resize: bool = False):
         self.labels = tuple(labels)
         self.by_genus = by_genus
+        self.direct_resize = direct_resize
+        if direct_resize:
+            import PIL.Image  # PlantWatch richiede il bilineare di Pillow.
         self._run, self.engine = _load_runner(path)
 
     def __call__(self, image):
         import numpy as np
 
-        rgb = _resize_rgb(image, config.MODEL_RESIZE, config.MODEL_INPUT_SIZE).astype(np.float32) / 255.0
+        if self.direct_resize:
+            rgb = _direct_resize_rgb(image, config.MODEL_INPUT_SIZE)
+        else:
+            rgb = _resize_rgb(image, config.MODEL_RESIZE, config.MODEL_INPUT_SIZE)
+        rgb = rgb.astype(np.float32) / 255.0
         rgb = (rgb - np.array(config.MODEL_MEAN, np.float32)) / np.array(config.MODEL_STD, np.float32)
         x = np.ascontiguousarray(rgb.transpose(2, 0, 1)[None], dtype=np.float32)
         logits = np.asarray(self._run(x), dtype=np.float64).reshape(-1)
@@ -123,13 +147,13 @@ def _labels(labels):
     return list(labels)
 
 
-def _try_load(what: str, filename, labels, by_genus: bool = False):
+def _try_load(what: str, filename, labels, by_genus: bool = False, direct_resize: bool = False):
     if not filename:
         return None
     path = os.path.join(MODEL_DIR, filename)
     try:
         names = _labels(labels)
-        model = OnnxClassifier(path, names, by_genus)
+        model = OnnxClassifier(path, names, by_genus, direct_resize)
         shown = names if len(names) <= 6 else f"{len(names)} etichette"
         log.info("modello %s caricato: %s (%s), uscite: %s", what, filename, model.engine, shown)
         return model
@@ -140,7 +164,8 @@ def _try_load(what: str, filename, labels, by_genus: bool = False):
 
 def create():
     models = Models()
-    health = _try_load("salute della pianta", config.HEALTH_MODEL_FILE, config.HEALTH_MODEL_LABELS)
+    health = _try_load("salute della pianta", config.HEALTH_MODEL_FILE, config.HEALTH_MODEL_LABELS,
+                       direct_resize=config.HEALTH_MODEL_DIRECT_RESIZE)
     if health is not None:
         models.assess_health = health
     plant = _try_load("tipo di pianta", config.PLANT_MODEL_FILE, config.PLANT_MODEL_LABELS, by_genus=True)

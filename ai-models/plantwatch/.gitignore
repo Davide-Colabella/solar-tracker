@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+datasets/
+models/*
+!models/houseplants/
+models/houseplants/*
+!models/houseplants/plantwatch.pth
+!models/houseplants/plantwatch.onnx
+!models/houseplants/plantwatch.json
+!models/houseplants/test_metrics.json
+.DS_Store
+.cache/
