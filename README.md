@@ -6,6 +6,18 @@ riconosce la pianta e il suo stato di salute da una foto e la innaffia dal
 serbatoio di raccolta quando ne ha bisogno. Una pagina web mostra tutto e
 permette di muovere il pannello a mano.
 
+## Sito di presentazione
+
+La landing page Solar Tracker in stile COESA Energy è in [`docs/`](docs/index.html), con immagini e font locali. È distinta dall'interfaccia Arduino in `assets/index.html`.
+
+Indirizzo previsto su GitHub Pages: [davide-colabella.github.io/solar-tracker/](https://davide-colabella.github.io/solar-tracker/).
+
+Per attivare la pubblicazione, un amministratore o un utente con il permesso di gestire GitHub Pages deve aprire **Settings → Pages**, selezionare **Deploy from a branch**, poi **main → /docs → Save**. Il file `.nojekyll` permette di pubblicare direttamente i file statici. I successivi push dei file in `docs/` aggiornano il sito automaticamente.
+
+Per l'anteprima locale: `python3 -m http.server 4173 --directory docs --bind 127.0.0.1`.
+
+La pagina presenta un concept di servizio: prezzi e dotazioni sono illustrativi. Il modulo prepara un riepilogo nel browser senza inviare richieste.
+
 ```
 app.yaml               nome dell'app e brick WebUI
 sketch/sketch.ino      microcontrollore: sensori, servo, LED, valvola, sicurezza
