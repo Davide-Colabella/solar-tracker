@@ -1,28 +1,30 @@
 'use strict';
 const scenarios = {
-  owned: { min: 710, max: 1170, detail: 'Kit + verifica + reinstallazione', label: 'Il mio pannello, già rimosso' },
-  roof: { min: 810, max: 1420, detail: 'Kit + verifica + smontaggio + reinstallazione', label: 'Il mio pannello, ancora sul tetto' },
-  supplied: { min: 790, max: 1320, detail: 'Kit + pannello recuperato + verifica + reinstallazione', label: 'Pannello recuperato fornito con il kit' }
+  single: { total: 349, detail: '1 kit principale', label: '1 pannello' },
+  double: { total: 498, detail: '1 kit principale + 1 modulo aggiuntivo', label: '2 pannelli' },
+  four: { total: 796, detail: '1 kit principale + 3 moduli aggiuntivi', label: '4 pannelli' }
 };
 const euro = value => new Intl.NumberFormat('it-IT', { useGrouping: 'always' }).format(value);
-const costRange = value => `${euro(value.min)}–${euro(value.max)} €`;
+const kitPrice = value => `${euro(value.total)} €`;
 const scenario = document.querySelector('#scenario');
 const formPanel = document.querySelector('#form-panel');
+const formKit = document.querySelector('#form-kit');
 function updateBudget(value) {
   const data = scenarios[value];
-  document.querySelector('#budget-total').textContent = costRange(data);
+  document.querySelector('#budget-total').textContent = kitPrice(data);
   document.querySelector('#budget-detail').textContent = data.detail;
 }
 scenario.addEventListener('change', () => {
   updateBudget(scenario.value);
-  formPanel.value = scenario.value;
+  formKit.value = scenario.value;
   document.querySelector('#form-result').hidden = true;
 });
-document.querySelector('#budget-link').addEventListener('click', () => { formPanel.value = scenario.value; });
-formPanel.addEventListener('change', () => {
-  scenario.value = formPanel.value;
-  updateBudget(formPanel.value);
+document.querySelector('#budget-link').addEventListener('click', () => { formKit.value = scenario.value; });
+formKit.addEventListener('change', () => {
+  scenario.value = formKit.value;
+  updateBudget(formKit.value);
 });
+updateBudget(scenario.value);
 
 const menu = document.querySelector('.menu-toggle');
 const nav = document.querySelector('#navigation');
@@ -58,29 +60,34 @@ form.addEventListener('input', () => { document.querySelector('#form-result').hi
 form.addEventListener('submit', event => {
   event.preventDefault();
   const values = new FormData(form);
-  const chosen = scenarios[values.get('panel')];
+  const chosen = scenarios[values.get('kit')];
+  const panelLabel = formPanel.selectedOptions[0].textContent;
   const power = values.get('power');
   summary = [
     'SOLAR TRACKER — RIEPILOGO DELLA CONFIGURAZIONE',
     'Proposta dimostrativa di servizio domestico in stile COESA Energy.',
     '',
-    `Pannello: ${chosen.label}`,
+    `Pannello: ${panelLabel}`,
+    `Configurazione: ${chosen.label} — ${chosen.detail}`,
     `Spazio: ${values.get('space')}`,
     `Età: ${values.get('age')}`,
     `Potenza nominale: ${power ? power + ' W' : 'Da verificare'}`,
     `Dettagli: ${values.get('notes') || 'Nessun dettaglio aggiuntivo'}`,
     '',
-    `BUDGET ILLUSTRATIVO: ${costRange(chosen)}`,
-    `Comprende nell'esempio: ${chosen.detail}.`,
-    'Importi inventati per esempio, ipotizzati IVA inclusa. Non costituiscono listino, offerta o preventivo.',
-    'Esclusi: trasporto, fondazioni, accumulo, inverter, connessione alla rete, pratiche e irrigazione.',
+    `STIMA DEI KIT: ${kitPrice(chosen)} — IVA ESCLUSA.`,
+    'Fonte: analisi economica HackTurin di Davide Colabella, 11 ottobre 2026, pagine 5–8.',
+    'Prezzi ipotizzati per la produzione in serie, con pannelli già di proprietà del cliente. Non costituiscono listino, offerta o preventivo.',
+    'Il kit principale prevede batteria di servizio, regolatore, camera e irrigazione; i moduli aggiuntivi dipendono dal principale.',
+    'Software opzionale: 48 €/anno, IVA esclusa, non incluso nel totale.',
+    'Da quotare separatamente: verifica dei pannelli, smontaggio, reinstallazione e collaudo sul posto, opere, inverter, connessione alla rete, pratiche ed eventuali pannelli forniti con il kit.',
+    'Il prezzo finale al consumatore dovrà includere l’IVA applicabile e gli interventi concordati.',
     '',
     'DA VERIFICARE: stato e prestazioni del pannello, dimensioni e peso, supporto meccanico, esposizione, ancoraggio e vento, componenti elettrici e utilizzo dell’energia.',
     'Solar Tracker nasce da un prototipo. La versione domestica e le dotazioni commerciali sono da validare.',
     '',
     'Questi dati sono stati elaborati soltanto nel browser. Nessuna richiesta è stata inviata a COESA o ad altri destinatari.'
   ].join('\n');
-  document.querySelector('#result-description').textContent = `${chosen.label} · ${values.get('space')} · budget di esempio ${costRange(chosen)}. Nessuna richiesta inviata.`;
+  document.querySelector('#result-description').textContent = `${chosen.label} · ${values.get('space')} · stima dei kit ${kitPrice(chosen)}, IVA esclusa. Pannelli, software opzionale e interventi sul posto non inclusi nel totale. Nessuna richiesta inviata.`;
   document.querySelector('#form-result').hidden = false;
 });
 document.querySelector('#download-summary').addEventListener('click', () => {
