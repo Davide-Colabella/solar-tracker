@@ -70,12 +70,14 @@ def test_sun_outside_azimuth_range_uses_best_reachable_pose():
     early = datetime(2026, 6, 21, 4, 30, tzinfo=UTC)    # sole a nord-est, fuori corsa
     sun = solar.sun_position(early, config.LATITUDE, config.LONGITUDE)
     assert 0 < sun.elevation < 15 and sun.azimuth < 90
-    pose, _ = solar.best_power_pose(sun, 600.0, 0.0)
+    pose, poa = solar.best_power_pose(sun, 600.0, 0.0)
     assert abs(pose.az_servo - config.AZ_SERVO_MIN) < 1e-6      # fermo a fine corsa est
-    # ottimo analitico con azimut bloccato: tan(tilt) = tan(zenit) * cos(delta azimut)
+    # ottimo analitico con azimut bloccato: tan(tilt) = tan(zenit) * cos(delta azimut).
+    # Col riflesso del terreno l'ottimo vero si sposta di poco: si confronta l'irraggiamento.
     best = math.degrees(math.atan(math.tan(math.radians(90 - sun.elevation))
                                   * math.cos(math.radians(pose.azimuth - sun.azimuth))))
-    assert abs(pose.tilt - min(best, config.TILT_MAX_DEG)) < 0.6
+    assert abs(pose.tilt - min(best, config.TILT_MAX_DEG)) < 2.0
+    assert poa >= solar.poa_irradiance(sun, 600.0, 0.0, pose.azimuth, min(best, config.TILT_MAX_DEG)) - 1e-6
 
 
 def test_overcast_goes_flat_without_spinning_the_base():
@@ -90,7 +92,7 @@ def test_servo_mapping_round_trip_and_limits():
     for az in (90, 135, 180, 225, 270):
         assert abs(solar.servo_to_az(solar.az_to_servo(az)) - az) < 1e-9
     assert solar.az_to_servo(180) == 90 and solar.az_to_servo(90) == 0 and solar.az_to_servo(270) == 180
-    p = solar.make_pose(10.0, 95.0)     # nord e oltre la verticale: non raggiungibile
+    p = solar.make_pose(10.0, 200.0)    # nord e oltre la corsa: non raggiungibile
     assert p.az_servo == 0.0 and p.tilt == config.TILT_MAX_DEG
     assert solar.make_pose(350.0, 30.0).az_servo == 180.0
 
@@ -832,14 +834,14 @@ def test_manual_control_from_web_page_and_light_sensor():
 
     state = tr.set_manual(120.0, 35.0)                          # la pagina prende il comando
     assert state["active"] and (state["azimuth"], state["tilt"]) == (120, 35)
-    assert (state["az_min"], state["az_max"], state["tilt_min"], state["tilt_max"]) == (90, 270, 0, 80)
+    assert (state["az_min"], state["az_max"], state["tilt_min"], state["tilt_max"]) == (90, 270, 0, config.TILT_MAX_DEG)
     step()                                                      # si muove subito, senza aspettare il minuto
     assert tr.last_decision.mode == ctl.MANUAL
     assert abs(mcu.az - solar.az_to_servo(120.0)) < 0.01 and abs(mcu.pitch - solar.tilt_to_servo(35.0)) < 0.01
     tr.set_manual(120.0, 36.0)                                  # anche un grado solo viene eseguito
     step()
     assert abs(mcu.pitch - solar.tilt_to_servo(36.0)) < 0.01
-    assert tr.set_manual(10.0, 200.0)["tilt"] == 80             # fuori corsa: limitato
+    assert tr.set_manual(10.0, 200.0)["tilt"] == config.TILT_MAX_DEG   # fuori corsa: limitato
 
     step(gust=config.WIND_STOW_MS + 5.0)                        # il vento vince sul comando manuale
     assert tr.last_decision.mode == ctl.SAFE and abs(mcu.pitch - solar.tilt_to_servo(config.STOW_TILT_DEG)) < 0.01
